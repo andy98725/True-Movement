@@ -8,6 +8,8 @@ import java.util.Random;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+import helpers.Util;
+
 @SuppressWarnings("serial")
 public class Main extends JPanel {
 	private static final int SIZE = 768;
@@ -129,6 +131,8 @@ public class Main extends JPanel {
 				outer.add(new Area(Util.extendArea(outer, 16)));
 			}
 			System.out.println("Move in " + (System.nanoTime() - before) / 1e9 + " sec");
+			System.out.println("Obs complexity of " + Util.areaComplexity(blockage) + "; Move complexity of "
+					+ Util.areaComplexity(move));
 			if (MOVE_OUTER_ENABLED) {
 				g.setColor(Color.BLUE);
 				g.fill(outer);

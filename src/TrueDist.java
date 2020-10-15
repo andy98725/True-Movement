@@ -3,6 +3,8 @@ import java.awt.geom.PathIterator;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import helpers.Util;
+
 public class TrueDist {
 
 	private static final double EXTEND = 2;
