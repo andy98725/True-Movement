@@ -1,49 +1,47 @@
 package helpers;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.geom.*;
+import java.awt.geom.Point2D;
+import java.awt.geom.QuadCurve2D;
 import java.util.ArrayList;
 
 @SuppressWarnings("serial")
-public class Quad extends QuadCurve2D.Double {
+public class Quad extends QuadCurve2D.Double implements CustomCurve {
 
+	@SuppressWarnings("unused")
 	private final boolean isConvex, isConcave;
+	private static final double SPLIT_COUNT = 16;
 
 	// For segment on segment estimation
 	private final ArrayList<Point2D> approxPts;
-	private final ArrayList<java.lang.Double> approxDist;
+	private final ArrayList<java.lang.Double> approxDists, approxTimes;
 
 	public Quad(double x0, double y0, double x1, double y1, double x2, double y2) {
 		super(x0, y0, x1, y1, x2, y2);
 		isConvex = Util.orientation(x0, y0, x1, y1, x2, y2) > 0;
 		isConcave = Util.orientation(x0, y0, x1, y1, x2, y2) < 0;
 
-		// NOTE: this approximation is lazy, using a builtin method (which would get the
-		// distances wrong, if that's a problem.)
 		approxPts = new ArrayList<Point2D>();
-		approxDist = new ArrayList<java.lang.Double>();
+		approxTimes = new ArrayList<java.lang.Double>();
+		approxDists = new ArrayList<java.lang.Double>();
 		double distCovered = 0;
-		Path2D path = new Path2D.Double();
-		path.moveTo(x0, y0);
-		path.quadTo(x1, y1, x2, y2);
-		path.closePath();
-		double[] coords = new double[6];
-		for (PathIterator p = path.getPathIterator(null, Cubic.FLATNESS); !p.isDone(); p.next()) {
-			switch (p.currentSegment(coords)) {
-			case PathIterator.SEG_LINETO:
-				// Increment distance
-				distCovered += Math.hypot(coords[0] - coords[2], coords[1] - coords[3]);
-			case PathIterator.SEG_MOVETO:
-				approxPts.add(new Point2D.Double(coords[0], coords[1]));
-				approxDist.add(distCovered);
-				// Save previous coords
-				coords[2] = coords[0];
-				coords[3] = coords[1];
-				break;
-
+		for (double t = 0; t <= 1; t += 1.0 / SPLIT_COUNT) {
+			approxTimes.add(t);
+			Point2D p = eval(t);
+			if (t == 0) {
+				approxDists.add(0.0);
+			} else {
+				distCovered += p.distance(approxPts.get(approxPts.size() - 1));
+				approxDists.add(distCovered);
 			}
+			approxPts.add(p);
 		}
+	}
+
+	public Quad getConvexCurve() {
+		if (isConvex)
+			return this;
+		else
+			return null;
 	}
 
 	public double[] getTangentPoints(double x, double y) {
@@ -67,36 +65,18 @@ public class Quad extends QuadCurve2D.Double {
 		double t0 = (base - Math.sqrt(rt)) / div;
 		double t1 = (base + Math.sqrt(rt)) / div;
 
-		double[] p0 = (t0 >= 0 && t0 <= 1) ? eval(t0) : new double[] {};
-		double[] p1 = (t1 >= 0 && t1 <= 1) ? eval(t1) : new double[] {};
+		Point2D p0 = (t0 >= 0 && t0 <= 1) ? eval(t0) : null;
+		Point2D p1 = (t1 >= 0 && t1 <= 1) ? eval(t1) : null;
 
-		double[] ret = new double[p0.length + p1.length];
-		for (int i = 0; i < p0.length; i++) {
-			ret[i] = p0[i];
+		if (p0 != null && p1 != null) {
+			return new double[] { p0.getX(), p0.getY(), p1.getX(), p1.getY() };
+		} else if (p0 != null) {
+			return new double[] { p0.getX(), p0.getY() };
+		} else if (p1 != null) {
+			return new double[] { p1.getX(), p1.getY() };
+		} else {
+			return new double[] {};
 		}
-		for (int i = 0; i < p1.length; i++) {
-			ret[p0.length + i] = p1[i];
-		}
-
-		return ret;
-	}
-
-	public void draw(Graphics2D g) {
-		if (isConvex) {
-			g.setColor(Cubic.CONVEX);
-			g.fill(this);
-		}
-		if (isConcave) {
-			g.setColor(Cubic.CONCAVE);
-			g.fill(this);
-		}
-		g.setColor(Color.BLACK);
-		g.draw(this);
-	}
-
-	private double[] eval(double t) {
-		return new double[] { (1 - t) * (1 - t) * x1 + 2 * t * (1 - t) * ctrlx + t * t * x2,
-				(1 - t) * (1 - t) * y1 + 2 * t * (1 - t) * ctrly + t * t * y2 };
 	}
 
 	private boolean testTangent(int i, double x, double y) {
@@ -138,40 +118,152 @@ public class Quad extends QuadCurve2D.Double {
 		return false;
 	}
 
-	public double[] getTangentLines(Cubic other) {
-		// Use faster method
-		return other.getTangentLines(this);
+	public QuadCurve2D subCurve(double t1, double t2) {
+		if (t1 >= t2) {
+			throw new RuntimeException("t1 must < t2");
+		}
+		if (t1 == 0 && t2 == 1)
+			return this;
+
+		QuadCurve2D sub = new QuadCurve2D.Double();
+		splitCurve(t2, x1, y1, ctrlx, ctrly, x2, y2, sub, false);
+		splitCurve(t1 / t2, sub.getX1(), sub.getY1(), sub.getCtrlX(), sub.getCtrlY(), sub.getX2(), sub.getY2(), sub,
+				true);
+		return sub;
+	}
+
+	// Split curve at point in time
+	public void splitCurve(double t, QuadCurve2D prev, QuadCurve2D next) {
+		if (prev != null)
+			splitCurve(t, x1, y1, ctrlx, ctrly, x2, y2, prev, false);
+		if (next != null)
+			splitCurve(t, x1, y1, ctrlx, ctrly, x2, y2, next, true);
+	}
+
+	private static void splitCurve(double t, double x1, double y1, double x2, double y2, double x3, double y3,
+			QuadCurve2D curve, boolean flip) {
+		if (flip) {
+			t = 1 - t;
+			double xt = x1;
+			double yt = y1;
+			x1 = x3;
+			y1 = y3;
+			x3 = xt;
+			y3 = yt;
+		}
+		double x12 = (x2 - x1) * t + x1;
+		double y12 = (y2 - y1) * t + y1;
+		double x23 = (x3 - x2) * t + x2;
+		double y23 = (y3 - y2) * t + y2;
+
+		double x123 = (x23 - x12) * t + x12;
+		double y123 = (y23 - y12) * t + y12;
+
+		// Maintain original orientation
+		if (flip)
+			curve.setCurve(x123, y123, x12, y12, x1, y1);
+		else
+			curve.setCurve(x1, y1, x12, y12, x123, y123);
 	}
 
 	// Do through rough approximation
-	public double[] getTangentLines(Quad other) {
-		ArrayList<Point2D> foundPoints = new ArrayList<Point2D>();
-		ArrayList<Point2D> otherPoints = new ArrayList<Point2D>();
+	@Override
+	public double[] getTangentLines(CustomCurve other) {
+		if (other instanceof Cubic) {
+			// This method is faster, because it uses quad getTangentPoints.
+			return other.getTangentLines(this);
+		} else if (other instanceof Quad) {
+			ArrayList<Point2D> foundPoints = new ArrayList<Point2D>();
+			ArrayList<Point2D> otherPoints = new ArrayList<Point2D>();
 
-		// Brute force each point
-		for (int i = 1; i < approxPts.size() - 1; i++) {
-			Point2D p = approxPts.get(i);
-			double[] tans = other.getTangentPoints(p.getX(), p.getY());
-			// Test tangent back
-			for (int j = 0; j < tans.length; j += 2) {
-				if (testTangent(i, tans[j], tans[j + 1])) {
-					foundPoints.add(p);
-					otherPoints.add(new Point2D.Double(tans[j], tans[j + 1]));
+			// Brute force each point
+			for (int i = 1; i < approxPts.size() - 1; i++) {
+				Point2D p = approxPts.get(i);
+				double[] tans = other.getTangentPoints(p.getX(), p.getY());
+				// Test tangent back
+				for (int j = 0; j < tans.length; j += 2) {
+					if (testTangent(i, tans[j], tans[j + 1])) {
+						foundPoints.add(p);
+						otherPoints.add(new Point2D.Double(tans[j], tans[j + 1]));
+					}
+
 				}
+			}
 
+			// Combine into an array of lines
+			double[] allLines = new double[foundPoints.size() * 4];
+			for (int i = 0; i < foundPoints.size(); i++) {
+				Point2D p = foundPoints.get(i);
+				Point2D p2 = otherPoints.get(i);
+				allLines[4 * i] = p.getX();
+				allLines[4 * i + 1] = p.getY();
+				allLines[4 * i + 2] = p2.getX();
+				allLines[4 * i + 3] = p2.getY();
+			}
+			return allLines;
+		} else {
+			throw new RuntimeException();
+		}
+	}
+
+	public double[] getTangentTimes(double x, double y) {
+		ArrayList<java.lang.Double> foundPoints = new ArrayList<java.lang.Double>();
+
+		// Use flattening approximation
+		for (int i = 1; i < approxPts.size() - 1; i++) {
+			if (testTangent(i, x, y)) {
+				foundPoints.add(approxTimes.get(i));
 			}
 		}
-
-		// Combine into an array of lines
-		double[] allLines = new double[foundPoints.size() * 4];
+		// Convert to array of times
+		double[] times = new double[foundPoints.size()];
 		for (int i = 0; i < foundPoints.size(); i++) {
-			Point2D p = foundPoints.get(i);
-			Point2D p2 = otherPoints.get(i);
-			allLines[4 * i] = p.getX();
-			allLines[4 * i + 1] = p.getY();
-			allLines[4 * i + 2] = p2.getX();
-			allLines[4 * i + 3] = p2.getY();
+			times[i] = foundPoints.get(i);
 		}
-		return allLines;
+		return times;
+	}
+
+	// Approximate times of tangent
+	public double[][] getTangentTimes(CustomCurve other) {
+		if (other instanceof Cubic) {
+			// This method is faster, because it uses quad getTangentPoints.
+			double[][] ret = other.getTangentTimes(this);
+			for (int i = 0; i < ret.length; i++) {
+				double tmp = ret[i][0];
+				ret[i][0] = ret[i][1];
+				ret[i][1] = tmp;
+			}
+			return ret;
+		} else if (other instanceof Quad) {
+			ArrayList<double[]> foundPairs = new ArrayList<double[]>();
+
+			// Brute force each point
+			for (int i = 1; i < approxPts.size() - 1; i++) {
+				Point2D p = approxPts.get(i);
+				double[] tans = other.getTangentPoints(p.getX(), p.getY());
+				// Test tangent back
+				for (int j = 0; j < tans.length; j += 2) {
+					if (testTangent(i, tans[j], tans[j + 1])) {
+						foundPairs.add(new double[] { p.getX(), p.getY(), tans[j], tans[j + 1] });
+					}
+
+				}
+			}
+
+			// Combine into an array of times
+			double[][] pairs = new double[foundPairs.size()][];
+			for (int i = 0; i < pairs.length; i++) {
+				pairs[i] = foundPairs.get(i);
+
+			}
+			return pairs;
+		} else {
+			throw new RuntimeException();
+		}
+	}
+
+	public Point2D eval(double t) {
+		return new Point2D.Double((1 - t) * (1 - t) * x1 + 2 * t * (1 - t) * ctrlx + t * t * x2,
+				(1 - t) * (1 - t) * y1 + 2 * t * (1 - t) * ctrly + t * t * y2);
 	}
 }

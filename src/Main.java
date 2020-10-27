@@ -94,7 +94,7 @@ public class Main extends JPanel {
 	}
 
 	private static final boolean SIGHT_ENABLED = true;
-	private static final boolean MOVE_ENABLED = true;
+	private static final boolean MOVE_ENABLED = false;
 	private static final boolean MOVE_OUTER_ENABLED = false;
 
 	@Override
@@ -107,18 +107,19 @@ public class Main extends JPanel {
 		g.setColor(Color.GRAY);
 		g.fill(blockage);
 		g.setColor(Color.DARK_GRAY);
-		g.setStroke(new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
+		g.setStroke(new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 		g.draw(blockage);
 
 		g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
 		if (SIGHT_ENABLED) {
 			long before = System.nanoTime();
-			Area sight = Raycast.raycast(mx, my, blockage, 2 * mouseRad);
+			Area sight = Raycast.raycast(mx + 0.5, my + 0.5, blockage, 2 * mouseRad);
 			System.out.println("Sight in " + (System.nanoTime() - before) / 1e9 + " sec");
 			g.setColor(Color.LIGHT_GRAY);
 			g.fill(sight);
 			g.setColor(Color.GRAY);
 			g.draw(sight);
+
 		}
 		if (MOVE_ENABLED) {
 			long before = System.nanoTime();
