@@ -6,7 +6,7 @@ import helpers.*;
 
 public class Raycast {
 
-	private static final int RAYCAST_DIST = Integer.MAX_VALUE / 2;
+	private static final int RAYCAST_DIST = (int) 1E9;
 
 //	private static final double EPSILON = 1E-2;
 
@@ -208,20 +208,6 @@ public class Raycast {
 
 	}
 
-	private static void closePath(double cx, double cy, Path2D path, double x1, double y1, double x2, double y2) {
-		// Raycast segment into distance
-		final double angle1 = Math.atan2(y1 - cy, x1 - cx);
-		final double angle2 = Math.atan2(y2 - cy, x2 - cx);
-
-		final double fx1 = cx + Math.cos(angle1) * RAYCAST_DIST;
-		final double fy1 = cy + Math.sin(angle1) * RAYCAST_DIST;
-		final double fx2 = cx + Math.cos(angle2) * RAYCAST_DIST;
-		final double fy2 = cy + Math.sin(angle2) * RAYCAST_DIST;
-		path.lineTo(fx2, fy2);
-		path.lineTo(fx1, fy1);
-		path.closePath();
-	}
-
 	private static boolean intersectsLine(Rectangle bounds, double x1, double y1, double x2, double y2) {
 		return bounds.intersectsLine(x1, y1, x2, y2);
 	}
@@ -233,6 +219,17 @@ public class Raycast {
 		block.lineTo(x2, y2);
 		closePath(cx, cy, block, x1, y1, x2, y2);
 		shape.subtract(new Area(block));
+	}
+
+	private static void closePath(double cx, double cy, Path2D path, double x1, double y1, double x2, double y2) {
+		// Raycast segment into distance
+		final double fx1 = cx + (x1 - cx) * RAYCAST_DIST;
+		final double fy1 = cy + (y1 - cy) * RAYCAST_DIST;
+		final double fx2 = cx + (x2 - cx) * RAYCAST_DIST;
+		final double fy2 = cy + (y2 - cy) * RAYCAST_DIST;
+		path.lineTo(fx2, fy2);
+		path.lineTo(fx1, fy1);
+		path.closePath();
 	}
 
 	private static boolean intersectsQuad(Rectangle bounds, double x1, double y1, double x2, double y2, double x3,
@@ -260,7 +257,8 @@ public class Raycast {
 			Path2D block = new Path2D.Double();
 			block.moveTo(sarc.getX1(), sarc.getY1());
 			block.quadTo(sarc.getCtrlX(), sarc.getCtrlY(), sarc.getX2(), sarc.getY2());
-			closePath(cx, cy, block, sarc.getX1(), sarc.getY1(), sarc.getX2(), sarc.getY2());
+			closePath(cx, cy, block, sarc.getX1(), sarc.getY1(), sarc.getCtrlX(), sarc.getCtrlY(), sarc.getX2(),
+					sarc.getY2());
 			shape.subtract(new Area(block));
 		}
 
@@ -269,8 +267,23 @@ public class Raycast {
 		Path2D block = new Path2D.Double();
 		block.moveTo(sarc.getX1(), sarc.getY1());
 		block.quadTo(sarc.getCtrlX(), sarc.getCtrlY(), sarc.getX2(), sarc.getY2());
-		closePath(cx, cy, block, sarc.getX1(), sarc.getY1(), sarc.getX2(), sarc.getY2());
+		closePath(cx, cy, block, sarc.getX1(), sarc.getY1(), sarc.getCtrlX(), sarc.getCtrlY(), sarc.getX2(),
+				sarc.getY2());
 		shape.subtract(new Area(block));
+	}
+
+	private static void closePath(double cx, double cy, Path2D path, double x1, double y1, double x2, double y2,
+			double x3, double y3) {
+		// Raycast curve into distance
+		final double fx1 = cx + (x1 - cx) * RAYCAST_DIST;
+		final double fy1 = cy + (y1 - cy) * RAYCAST_DIST;
+		final double fx2 = cx + (x2 - cx) * RAYCAST_DIST;
+		final double fy2 = cy + (y2 - cy) * RAYCAST_DIST;
+		final double fx3 = cx + (x3 - cx) * RAYCAST_DIST;
+		final double fy3 = cy + (y3 - cy) * RAYCAST_DIST;
+		path.lineTo(fx3, fy3);
+		path.quadTo(fx2, fy2, fx1, fy1);
+		path.closePath();
 	}
 
 	private static boolean intersectsCubic(Rectangle bounds, double x1, double y1, double x2, double y2, double x3,
@@ -298,7 +311,8 @@ public class Raycast {
 			block.moveTo(sarc.getX1(), sarc.getY1());
 			block.curveTo(sarc.getCtrlX1(), sarc.getCtrlY1(), sarc.getCtrlX2(), sarc.getCtrlY2(), sarc.getX2(),
 					sarc.getY2());
-			closePath(cx, cy, block, sarc.getX1(), sarc.getY1(), sarc.getX2(), sarc.getY2());
+			closePath(cx, cy, block, sarc.getX1(), sarc.getY1(), sarc.getCtrlX1(), sarc.getCtrlY1(), sarc.getCtrlX2(),
+					sarc.getCtrlY2(), sarc.getX2(), sarc.getY2());
 			shape.subtract(new Area(block));
 		}
 
@@ -308,8 +322,25 @@ public class Raycast {
 		block.moveTo(sarc.getX1(), sarc.getY1());
 		block.curveTo(sarc.getCtrlX1(), sarc.getCtrlY1(), sarc.getCtrlX2(), sarc.getCtrlY2(), sarc.getX2(),
 				sarc.getY2());
-		closePath(cx, cy, block, sarc.getX1(), sarc.getY1(), sarc.getX2(), sarc.getY2());
+		closePath(cx, cy, block, sarc.getX1(), sarc.getY1(), sarc.getCtrlX1(), sarc.getCtrlY1(), sarc.getCtrlX2(),
+				sarc.getCtrlY2(), sarc.getX2(), sarc.getY2());
 		shape.subtract(new Area(block));
+	}
+
+	private static void closePath(double cx, double cy, Path2D path, double x1, double y1, double x2, double y2,
+			double x3, double y3, double x4, double y4) {
+		// Raycast curve into distance
+		final double fx1 = cx + (x1 - cx) * RAYCAST_DIST;
+		final double fy1 = cy + (y1 - cy) * RAYCAST_DIST;
+		final double fx2 = cx + (x2 - cx) * RAYCAST_DIST;
+		final double fy2 = cy + (y2 - cy) * RAYCAST_DIST;
+		final double fx3 = cx + (x3 - cx) * RAYCAST_DIST;
+		final double fy3 = cy + (y3 - cy) * RAYCAST_DIST;
+		final double fx4 = cx + (x4 - cx) * RAYCAST_DIST;
+		final double fy4 = cy + (y4 - cy) * RAYCAST_DIST;
+		path.lineTo(fx4, fy4);
+		path.curveTo(fx3, fy3, fx2, fy2, fx1, fy1);
+		path.closePath();
 	}
 
 }

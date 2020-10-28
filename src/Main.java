@@ -114,7 +114,7 @@ public class Main extends JPanel {
 		if (SIGHT_ENABLED) {
 			long before = System.nanoTime();
 			Area sight = Raycast.raycast(mx + 0.5, my + 0.5, blockage, 2 * mouseRad);
-			System.out.println("Sight in " + (System.nanoTime() - before) / 1e9 + " sec");
+			System.out.println("Sight in " + (System.nanoTime() - before) / 1e9 + " sec" + "(Obs complexity " + Util.areaComplexity(blockage) + ", Post complexity " + Util.areaComplexity(sight) + ")");
 			g.setColor(Color.LIGHT_GRAY);
 			g.fill(sight);
 			g.setColor(Color.GRAY);
@@ -160,12 +160,19 @@ public class Main extends JPanel {
 
 		blockage = new Area();
 
-		final int circleCount = 3 + r.nextInt(5);
+		final int circleCount = 5 + r.nextInt(5);
 		for (int i = 0; i < circleCount; i++) {
 			int rad = 16 + r.nextInt(128);
 			int x = BOR + r.nextInt(SIZE - 2 * BOR);
 			int y = BOR + r.nextInt(SIZE - 2 * BOR);
 			blockage.add(new Area(new Ellipse2D.Double(x - rad, y - rad, 2 * rad, 2 * rad)));
+		}
+		final int subCount = 2 + r.nextInt(2);
+		for (int i = 0; i < subCount; i++) {
+			int rad = 128 + r.nextInt(64);
+			int x = BOR + r.nextInt(SIZE - 2 * BOR);
+			int y = BOR + r.nextInt(SIZE - 2 * BOR);
+			blockage.subtract(new Area(new Ellipse2D.Double(x - rad, y - rad, 2 * rad, 2 * rad)));
 		}
 		final int squareCount = 4 + r.nextInt(5);
 		for (int i = 0; i < squareCount; i++) {

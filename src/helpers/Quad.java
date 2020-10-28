@@ -263,7 +263,13 @@ public class Quad extends QuadCurve2D.Double implements CustomCurve {
 	}
 
 	public Point2D eval(double t) {
-		return new Point2D.Double((1 - t) * (1 - t) * x1 + 2 * t * (1 - t) * ctrlx + t * t * x2,
-				(1 - t) * (1 - t) * y1 + 2 * t * (1 - t) * ctrly + t * t * y2);
+		return eval(t, x1, y1, ctrlx, ctrly, x2, y2);
+	}
+
+	public static Point2D eval(double t, double x1, double y1, double ctrlx, double ctrly, double x2, double y2) {
+		double mt = 1 - t;
+		return new Point2D.Double(mt * mt * x1 + 2 * mt * t * ctrlx + t * t * x2,
+				mt * mt * y1 + 2 * mt * t * ctrly + t * t * y2);
+
 	}
 }

@@ -106,7 +106,7 @@ public class TrueDist {
 }
 
 class MovementNode implements Comparable<MovementNode> {
-	private static final double EPSILON = 1E-8;
+	private static final double EPSILON = 1E-2;
 	private final double x, y;
 	private double moveAbility = 0;
 	private boolean propogated = false;

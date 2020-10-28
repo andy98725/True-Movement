@@ -165,7 +165,7 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 		}
 		if (t1 == 0 && t2 == 1)
 			return this;
-		
+
 		CubicCurve2D sub = new CubicCurve2D.Double();
 		splitCurve(t2, x1, y1, ctrlx1, ctrly1, ctrlx2, ctrly2, x2, y2, sub, false);
 		splitCurve(t1 / t2, sub.getX1(), sub.getY1(), sub.getCtrlX1(), sub.getCtrlY1(), sub.getCtrlX2(),
@@ -297,8 +297,12 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 	}
 
 	public Point2D eval(double t) {
-		double mt = 1 - t;
+		return eval(t, x1, y1, ctrlx1, ctrly1, ctrlx2, ctrly2, x2, y2);
+	}
 
+	public static Point2D eval(double t, double x1, double y1, double ctrlx1, double ctrly1, double ctrlx2,
+			double ctrly2, double x2, double y2) {
+		double mt = 1 - t;
 		return new Point2D.Double(
 				mt * mt * mt * x1 + 3.0 * t * mt * mt * ctrlx1 + 3.0 * t * t * mt * ctrlx2 + t * t * t * x2,
 				mt * mt * mt * y1 + 3.0 * t * mt * mt * ctrly1 + 3.0 * t * t * mt * ctrly2 + t * t * t * y2);
