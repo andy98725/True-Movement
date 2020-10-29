@@ -113,7 +113,7 @@ public class Main extends JPanel {
 		g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
 		if (SIGHT_ENABLED) {
 			long before = System.nanoTime();
-			Area sight = Raycast.raycast(mx + 0.5, my + 0.5, blockage, 2 * mouseRad);
+			Area sight = Raycast.raycastFull(mx + 0.5, my + 0.5, blockage, 2 * mouseRad);
 			System.out.println("Sight in " + (System.nanoTime() - before) / 1e9 + " sec" + "(Obs complexity " + Util.areaComplexity(blockage) + ", Post complexity " + Util.areaComplexity(sight) + ")");
 			g.setColor(Color.LIGHT_GRAY);
 			g.fill(sight);

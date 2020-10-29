@@ -266,6 +266,10 @@ public class Quad extends QuadCurve2D.Double implements CustomCurve {
 		return eval(t, x1, y1, ctrlx, ctrly, x2, y2);
 	}
 
+	public static Point2D eval(double t, QuadCurve2D curve) {
+		return eval(t, curve.getX1(), curve.getY1(), curve.getCtrlX(), curve.getCtrlY(), curve.getX2(), curve.getY2());
+	}
+
 	public static Point2D eval(double t, double x1, double y1, double ctrlx, double ctrly, double x2, double y2) {
 		double mt = 1 - t;
 		return new Point2D.Double(mt * mt * x1 + 2 * mt * t * ctrlx + t * t * x2,

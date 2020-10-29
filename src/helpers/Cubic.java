@@ -1,7 +1,8 @@
 package helpers;
 
 import java.awt.Color;
-import java.awt.geom.*;
+import java.awt.geom.CubicCurve2D;
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 
 @SuppressWarnings("serial")
@@ -298,6 +299,11 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 
 	public Point2D eval(double t) {
 		return eval(t, x1, y1, ctrlx1, ctrly1, ctrlx2, ctrly2, x2, y2);
+	}
+
+	public static Point2D eval(double t, CubicCurve2D curve) {
+		return eval(t, curve.getX1(), curve.getY1(), curve.getCtrlX1(), curve.getCtrlY1(), curve.getCtrlX2(),
+				curve.getCtrlY2(), curve.getX2(), curve.getY2());
 	}
 
 	public static Point2D eval(double t, double x1, double y1, double ctrlx1, double ctrly1, double ctrlx2,
