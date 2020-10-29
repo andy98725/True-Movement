@@ -9,10 +9,9 @@ import helpers.*;
 public class Raycast {
 
 	private static final int RAYCAST_DIST = (int) 1E9;
+	private static final double EPSILON = 1E-2;
 
-//	private static final double EPSILON = 1E-2;
-
-	public static Area raycastFull(double x, double y, Area obs, double rad) {
+	public static Area raycast(double x, double y, Area obs, double rad) {
 
 		if (rad <= 0 || obs.contains(x, y))
 			return new Area();
@@ -67,9 +66,10 @@ public class Raycast {
 						path.moveTo(sx, sy);
 						pathRev = new Stack<Shape>();
 					}
-
-					path.lineTo(coords[0], coords[1]);
-					pathRev.push(new Line2D.Double(coords[0], coords[1], pcoords[0], pcoords[1]));
+					if (Math.hypot(coords[0] - pcoords[0], coords[1] - pcoords[1]) > EPSILON) {
+						path.lineTo(coords[0], coords[1]);
+						pathRev.push(new Line2D.Double(coords[0], coords[1], pcoords[0], pcoords[1]));
+					}
 
 					// Out of bounds or close segments are automatic finishes
 					if (!inBounds || oper == PathIterator.SEG_CLOSE) {
@@ -83,22 +83,107 @@ public class Raycast {
 				pcoords[1] = coords[1];
 				break;
 
-			case PathIterator.SEG_QUADTO:
-				// Should this segment cast a shadow?
-				inBounds = intersectsQuad(visionBounds, pcoords[0], pcoords[1], coords[0], coords[1], coords[2],
-						coords[3]);
-				if (inBounds || path != null) {
-					if (path == null) {
-						sx = pcoords[0];
-						sy = pcoords[1];
-						dir = Util.orientation(x, y, pcoords[0], pcoords[1], coords[0], coords[1]);
-						path = new Path2D.Double();
-						path.moveTo(sx, sy);
-						pathRev = new Stack<Shape>();
-					}
+			case PathIterator.SEG_QUADTO: {
 
-					// Ensure still moving in same direction
-					if (inBounds && dir != Util.orientation(x, y, pcoords[0], pcoords[1], coords[0], coords[1])) {
+				// Split by tangents
+				Quad arc = new Quad(pcoords[0], pcoords[1], coords[0], coords[1], coords[2], coords[3]);
+				double[] t = arc.getTangentTimes(x, y);
+				QuadCurve2D[] curves = new QuadCurve2D[t.length + 1];
+				double pt = 0;
+				for (int i = 0; i < t.length; i++) {
+					curves[i] = arc.subCurve(pt, t[i]);
+					pt = t[i];
+				}
+				curves[t.length] = arc.subCurve(pt, 1);
+				// Do cubic interpolation for each curve
+				for (QuadCurve2D c : curves) {
+					coords[0] = c.getCtrlX();
+					coords[1] = c.getCtrlY();
+					coords[2] = c.getX2();
+					coords[3] = c.getY2();
+
+					// Should this segment cast a shadow?
+					inBounds = intersectsQuad(visionBounds, pcoords[0], pcoords[1], coords[0], coords[1], coords[2],
+							coords[3]);
+					if (inBounds || path != null) {
+						if (path == null) {
+							sx = pcoords[0];
+							sy = pcoords[1];
+							dir = Util.orientation(x, y, pcoords[0], pcoords[1], coords[0], coords[1]);
+							path = new Path2D.Double();
+							path.moveTo(sx, sy);
+							pathRev = new Stack<Shape>();
+						}
+
+						// Ensure still moving in same direction
+//						if (inBounds && dir != Util.orientation(x, y, pcoords[0], pcoords[1], coords[0], coords[1])) {
+							// Finish and start new!
+							finishPath(ret, path, x, y, pathRev);
+							paths.add(path);
+							sx = pcoords[0];
+							sy = pcoords[1];
+							dir = Util.orientation(x, y, pcoords[0], pcoords[1], coords[0], coords[1]);
+							path = new Path2D.Double();
+							path.moveTo(sx, sy);
+							pathRev = new Stack<Shape>();
+//						}
+
+						path.quadTo(coords[0], coords[1], coords[2], coords[3]);
+						pathRev.push(new QuadCurve2D.Double(coords[2], coords[3], coords[0], coords[1], pcoords[0],
+								pcoords[1]));
+
+						// If just moved out of bounds, also finish
+						if (!inBounds) {
+							finishPath(ret, path, x, y, pathRev);
+							paths.add(path);
+							path = null;
+							pathRev = null;
+
+						}
+					}
+					pcoords[0] = coords[2];
+					pcoords[1] = coords[3];
+				}
+				break;
+			}
+
+			case PathIterator.SEG_CUBICTO: {
+				// Split by tangents
+				Cubic arc = new Cubic(pcoords[0], pcoords[1], coords[0], coords[1], coords[2], coords[3], coords[4],
+						coords[5]);
+				double[] t = arc.getTangentTimes(x, y);
+				CubicCurve2D[] curves = new CubicCurve2D[t.length + 1];
+				double pt = 0;
+				for (int i = 0; i < t.length; i++) {
+					curves[i] = arc.subCurve(pt, t[i]);
+					pt = t[i];
+				}
+				curves[t.length] = arc.subCurve(pt, 1);
+				// Do cubic interpolation for each curve
+				for (CubicCurve2D c : curves) {
+					coords[0] = c.getCtrlX1();
+					coords[1] = c.getCtrlY1();
+					coords[2] = c.getCtrlX2();
+					coords[3] = c.getCtrlY2();
+					coords[4] = c.getX2();
+					coords[5] = c.getY2();
+
+					// Should this segment cast a shadow?
+					inBounds = intersectsCubic(visionBounds, pcoords[0], pcoords[1], coords[0], coords[1], coords[2],
+							coords[3], coords[4], coords[5]);
+					if (inBounds || path != null) {
+						if (path == null) {
+							sx = pcoords[0];
+							sy = pcoords[1];
+							dir = Util.orientation(x, y, pcoords[0], pcoords[1], coords[0], coords[1]);
+							path = new Path2D.Double();
+							path.moveTo(sx, sy);
+							pathRev = new Stack<Shape>();
+						}
+
+						//TODO why doesn't this optimization work?
+						// Ensure still moving in same direction
+//						if (inBounds && dir != Util.orientation(x, y, pcoords[0], pcoords[1], coords[0], coords[1])) {
 						// Finish and start new!
 						finishPath(ret, path, x, y, pathRev);
 						paths.add(path);
@@ -108,130 +193,31 @@ public class Raycast {
 						path = new Path2D.Double();
 						path.moveTo(sx, sy);
 						pathRev = new Stack<Shape>();
+//						}
+
+						path.curveTo(coords[0], coords[1], coords[2], coords[3], coords[4], coords[5]);
+						pathRev.push(new CubicCurve2D.Double(coords[4], coords[5], coords[2], coords[3], coords[0],
+								coords[1], pcoords[0], pcoords[1]));
+
+						// If just moved out of bounds, also finish
+						if (!inBounds) {
+							finishPath(ret, path, x, y, pathRev);
+							paths.add(path);
+							path = null;
+							pathRev = null;
+
+						}
 					}
-
-					// Add current segments, accounting for tangents
-					Quad arc = new Quad(pcoords[0], pcoords[1], coords[0], coords[1], coords[2], coords[3]);
-					// Add path for each subtangent
-					double[] t = arc.getTangentTimes(x, y);
-					double pt = 0;
-					for (int i = 0; i < t.length; i++) {
-						QuadCurve2D sarc = arc.subCurve(pt, t[i]);
-						pt = t[i];
-						// Add then change direction
-						path.quadTo(sarc.getCtrlX(), sarc.getCtrlY(), sarc.getX2(), sarc.getY2());
-						pathRev.push(new QuadCurve2D.Double(sarc.getX2(), sarc.getY2(), sarc.getCtrlX(),
-								sarc.getCtrlY(), sarc.getX1(), sarc.getY1()));
-
-						finishPath(ret, path, x, y, pathRev);
-						paths.add(path);
-						sx = sarc.getX2();
-						sy = sarc.getY2();
-						path = new Path2D.Double();
-						path.moveTo(sx, sy);
-						pathRev = new Stack<Shape>();
-
-					}
-					// Finish out, saving direction
-					QuadCurve2D sarc = arc.subCurve(pt, 1);
-					path.quadTo(sarc.getCtrlX(), sarc.getCtrlY(), sarc.getX2(), sarc.getY2());
-					pathRev.push(new QuadCurve2D.Double(sarc.getX2(), sarc.getY2(), sarc.getCtrlX(), sarc.getCtrlY(),
-							sarc.getX1(), sarc.getY1()));
-//					Point2D ending = Quad.eval(0.99, sarc);
-//					dir = Util.orientation(x, y, ending.getX(), ending.getY(), sarc.getX2(), sarc.getY2());
-					dir = Util.orientation(x, y, sarc.getCtrlX(), sarc.getCtrlY(), sarc.getX2(), sarc.getY2());
-
-					// If just moved out of bounds, also finish
-					if (!inBounds) {
-						finishPath(ret, path, x, y, pathRev);
-						paths.add(path);
-						path = null;
-						pathRev = null;
-
-					}
+					pcoords[0] = coords[4];
+					pcoords[1] = coords[5];
 				}
-				pcoords[0] = coords[2];
-				pcoords[1] = coords[3];
 				break;
-
-			case PathIterator.SEG_CUBICTO:
-				// Should this segment cast a shadow?
-				inBounds = intersectsCubic(visionBounds, pcoords[0], pcoords[1], coords[0], coords[1], coords[2],
-						coords[3], coords[4], coords[5]);
-				if (inBounds || path != null) {
-					if (path == null) {
-						sx = pcoords[0];
-						sy = pcoords[1];
-						dir = Util.orientation(x, y, pcoords[0], pcoords[1], coords[0], coords[1]);
-						path = new Path2D.Double();
-						path.moveTo(sx, sy);
-						pathRev = new Stack<Shape>();
-					}
-
-					// Ensure still moving in same direction
-					if (inBounds && dir != Util.orientation(x, y, pcoords[0], pcoords[1], coords[0], coords[1])) {
-						// Finish and start new!
-						finishPath(ret, path, x, y, pathRev);
-						paths.add(path);
-						sx = pcoords[0];
-						sy = pcoords[1];
-						dir = Util.orientation(x, y, pcoords[0], pcoords[1], coords[0], coords[1]);
-						path = new Path2D.Double();
-						path.moveTo(sx, sy);
-						pathRev = new Stack<Shape>();
-					}
-
-					// Add current segments, accounting for tangents
-					Cubic arc = new Cubic(pcoords[0], pcoords[1], coords[0], coords[1], coords[2], coords[3], coords[4],
-							coords[5]);
-					// Add path for each subtangent
-					double[] t = arc.getTangentTimes(x, y);
-					double pt = 0;
-					for (int i = 0; i < t.length; i++) {
-						CubicCurve2D sarc = arc.subCurve(pt, t[i]);
-						pt = t[i];
-						// Add then change direction
-						path.curveTo(sarc.getCtrlX1(), sarc.getCtrlY1(), sarc.getCtrlX2(), sarc.getCtrlY2(),
-								sarc.getX2(), sarc.getY2());
-						pathRev.push(new CubicCurve2D.Double(sarc.getX2(), sarc.getY2(), sarc.getCtrlX2(),
-								sarc.getCtrlY2(), sarc.getCtrlX1(), sarc.getCtrlY1(), sarc.getX1(), sarc.getY1()));
-
-						finishPath(ret, path, x, y, pathRev);
-						paths.add(path);
-						sx = sarc.getX2();
-						sy = sarc.getY2();
-						path = new Path2D.Double();
-						path.moveTo(sx, sy);
-						pathRev = new Stack<Shape>();
-
-					}
-					// Finish out, saving direction
-					CubicCurve2D sarc = arc.subCurve(pt, 1);
-					path.curveTo(sarc.getCtrlX1(), sarc.getCtrlY1(), sarc.getCtrlX2(), sarc.getCtrlY2(), sarc.getX2(),
-							sarc.getY2());
-					pathRev.push(new CubicCurve2D.Double(sarc.getX2(), sarc.getY2(), sarc.getCtrlX2(), sarc.getCtrlY2(),
-							sarc.getCtrlX1(), sarc.getCtrlY1(), sarc.getX1(), sarc.getY1()));
-//					Point2D ending = Cubic.eval(0.99, sarc);
-//					dir = Util.orientation(x, y, ending.getX(), ending.getY(), sarc.getX2(), sarc.getY2());
-					dir = Util.orientation(x, y, sarc.getCtrlX2(), sarc.getCtrlY2(), sarc.getX2(), sarc.getY2());
-
-					// If just moved out of bounds, also finish
-					if (!inBounds) {
-						finishPath(ret, path, x, y, pathRev);
-						paths.add(path);
-						path = null;
-						pathRev = null;
-
-					}
-				}
-				pcoords[0] = coords[4];
-				pcoords[1] = coords[5];
-				break;
-
+			}
 			}
 		}
 
 		return ret;
+
 	}
 
 	private static void finishPath(Area ret, Path2D path, double x, double y, Stack<Shape> pathRev) {
@@ -286,7 +272,7 @@ public class Raycast {
 
 	}
 
-	public static Area raycast(double x, double y, Area obs, double rad) {
+	public static Area raycastIndividuals(double x, double y, Area obs, double rad) {
 
 		if (rad <= 0 || obs.contains(x, y))
 			return new Area();

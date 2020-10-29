@@ -169,7 +169,7 @@ class MovementNode implements Comparable<MovementNode> {
 //				.createFlattenedArea(Shadowcaster.getRaycast(null, new Point2D.Double(x, y), obs, moveAbility), 2);
 //		return AreaFunctions
 //				.createFlattenedArea(Shadowcaster.getRaycast(null, new Point2D.Double(x, y), obs, moveAbility), 2);
-		return Raycast.raycast(x, y, obs, moveAbility); // the correct one
+		return Raycast.raycastIndividuals(x, y, obs, moveAbility); // the correct one
 	}
 
 	@Override
