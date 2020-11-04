@@ -15,11 +15,16 @@ public class GeometryBucket {
 
 	private final ArrayList<CurveNode> nodes;
 
+	private final double originX, originY, rad;
+
 	public GeometryBucket() {
-		this(new Area(), 1);
+		this(new Area(), 1, 0, 0, 0);
 	}
 
-	public GeometryBucket(Area a, double extend) {
+	public GeometryBucket(Area a, double extend, double x, double y, double maxRad) {
+		this.originX = x;
+		this.originY = y;
+		this.rad = maxRad;
 		// Since the area is necessarily extended, we can make the nice assumption
 		// that the only POI are curved nodes.
 		// This allows a complete exclusion of a pointNode class.
@@ -87,6 +92,8 @@ public class GeometryBucket {
 	private CurveNode prevLink, startLink;
 
 	private void genAndConnectNodes() {
+		final Ellipse2D bounds = new Ellipse2D.Double(originX - rad, originY - rad, 2 * rad, 2 * rad);
+		
 		prevLink = null;
 		startLink = null;
 		saveStart = true;
@@ -109,7 +116,7 @@ public class GeometryBucket {
 			} else if (path.get(i) instanceof CustomCurve) {
 				CustomCurve s = (CustomCurve) path.get(i);
 
-				CurveNode c = CurveNode.genCurveNode(s);
+				CurveNode c = CurveNode.genCurveNode(s, bounds);
 				if (c != null) {
 					nodes.add(c);
 					if (prevLink != null)

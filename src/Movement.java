@@ -16,7 +16,7 @@ public class Movement {
 //			return new Area();
 			return new GeometryBucket();
 
-		return new GeometryBucket(obs, extend);
+		return new GeometryBucket(obs, extend, x, y, rad);
 
 	}
 }
