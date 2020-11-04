@@ -1,6 +1,7 @@
 package helpers;
 
 import java.awt.Shape;
+import java.awt.geom.Point2D;
 
 public interface CustomCurve extends Shape {
 
@@ -8,6 +9,8 @@ public interface CustomCurve extends Shape {
 
 	public double[] getTangentLines(CustomCurve other);
 
+	public double[] getTangentTimes(double x, double y);
+	
 	public double[][] getTangentTimes(CustomCurve other);
 
 	public double getClosestTime(double x, double y);
@@ -31,4 +34,6 @@ public interface CustomCurve extends Shape {
 	public boolean intersectsLine(double x1, double y1, double x2, double y2);
 
 	public boolean isConvex();
+	
+	public Point2D eval(double t);
 }

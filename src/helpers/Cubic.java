@@ -268,6 +268,7 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 		return allLines;
 	}
 
+	@Override
 	public double[] getTangentTimes(double x, double y) {
 		ArrayList<java.lang.Double> foundPoints = new ArrayList<java.lang.Double>();
 
@@ -292,13 +293,12 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 		// Brute force each point
 		for (int i = 1; i < approxPts.size() - 1; i++) {
 			Point2D p = approxPts.get(i);
-			double[] tans = other.getTangentPoints(p.getX(), p.getY());
+			double[] tans = other.getTangentTimes(p.getX(), p.getY());
 			// Test tangent back
-			for (int j = 0; j < tans.length; j += 2) {
-				if (testTangent(i, tans[j], tans[j + 1])) {
-					foundPairs.add(new double[] { p.getX(), p.getY(), tans[j], tans[j + 1] });
-				}
-
+			for (double t2 : tans) {
+				Point2D p2 = other.eval(t2);
+				if (testTangent(i, p2.getX(), p2.getY()))
+					foundPairs.add(new double[] { approxTimes.get(i), t2 });
 			}
 		}
 

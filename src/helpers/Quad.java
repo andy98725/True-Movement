@@ -44,10 +44,12 @@ public class Quad extends QuadCurve2D.Double implements CustomCurve {
 			return null;
 	}
 
+	@Override
 	public boolean isConvex() {
 		return isConvex;
 	}
 
+	@Override
 	public double[] getTangentPoints(double x, double y) {
 		final double a = x1, b = ctrlx, c = x2;
 		final double j = y1, k = ctrly, l = y2;
@@ -80,6 +82,44 @@ public class Quad extends QuadCurve2D.Double implements CustomCurve {
 			return new double[] { p1.getX(), p1.getY() };
 		} else {
 			return new double[] {};
+		}
+	}
+
+	@Override
+	public double[] getTangentTimes(double x, double y) {
+		final double a = x1, b = ctrlx, c = x2;
+		final double j = y1, k = ctrly, l = y2;
+
+		// Calculate divisor
+		double div = 2 * (a * k - a * l - b * j + b * l + c * j - c * k);
+		if (div == 0) {
+			return new double[] {};
+		}
+
+		double base = 2 * a * k - a * l - a * y - 2 * b * j + 2 * b * y + c * j - c * y + j * x - 2 * k * x + l * x;
+		double rt = Math
+				.pow(2 * a * k - a * l - a * y - 2 * b * j + 2 * b * y + c * j - c * y + j * x - 2 * k * x + l * x, 2);
+		rt += 4 * (a * k - a * l - b * j + b * l + c * j - c * k) * (-a * k + a * y + b * j - b * y - j * x + k * x);
+		if (rt < 0) {
+			return new double[] {};
+		}
+
+		double t0 = (base - Math.sqrt(rt)) / div;
+		double t1 = (base + Math.sqrt(rt)) / div;
+
+		// Return either in valid range
+		if (t0 >= 0 && t0 <= 1) {
+			if (t1 >= 0 && t1 <= 1) {
+				return new double[] { t0, t1 };
+			} else {
+				return new double[] { t0 };
+			}
+		} else {
+			if (t1 >= 0 && t1 <= 1) {
+				return new double[] { t1 };
+			} else {
+				return new double[] {};
+			}
 		}
 	}
 
@@ -210,27 +250,10 @@ public class Quad extends QuadCurve2D.Double implements CustomCurve {
 		}
 	}
 
-	public double[] getTangentTimes(double x, double y) {
-		ArrayList<java.lang.Double> foundPoints = new ArrayList<java.lang.Double>();
-
-		// Use flattening approximation
-		for (int i = 1; i < approxPts.size() - 1; i++) {
-			if (testTangent(i, x, y)) {
-				foundPoints.add(approxTimes.get(i));
-			}
-		}
-		// Convert to array of times
-		double[] times = new double[foundPoints.size()];
-		for (int i = 0; i < foundPoints.size(); i++) {
-			times[i] = foundPoints.get(i);
-		}
-		return times;
-	}
-
 	// Approximate times of tangent
 	public double[][] getTangentTimes(CustomCurve other) {
 		if (other instanceof Cubic) {
-			// This method is faster, because it uses quad getTangentPoints.
+			// This method is faster, because it uses quad getTangentTimes.
 			double[][] ret = other.getTangentTimes(this);
 			for (int i = 0; i < ret.length; i++) {
 				double tmp = ret[i][0];
@@ -244,13 +267,12 @@ public class Quad extends QuadCurve2D.Double implements CustomCurve {
 			// Brute force each point
 			for (int i = 1; i < approxPts.size() - 1; i++) {
 				Point2D p = approxPts.get(i);
-				double[] tans = other.getTangentPoints(p.getX(), p.getY());
+				double[] tans = other.getTangentTimes(p.getX(), p.getY());
 				// Test tangent back
-				for (int j = 0; j < tans.length; j += 2) {
-					if (testTangent(i, tans[j], tans[j + 1])) {
-						foundPairs.add(new double[] { p.getX(), p.getY(), tans[j], tans[j + 1] });
-					}
-
+				for (double t2 : tans) {
+					Point2D p2 = other.eval(t2);
+					if (testTangent(i, p2.getX(), p2.getY()))
+						foundPairs.add(new double[] { approxTimes.get(i), t2 });
 				}
 			}
 

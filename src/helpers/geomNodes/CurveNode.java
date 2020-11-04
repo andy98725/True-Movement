@@ -2,6 +2,7 @@ package helpers.geomNodes;
 
 import java.awt.*;
 import java.awt.geom.Area;
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -30,6 +31,16 @@ public class CurveNode {
 		nextNeighbor = other;
 		other.prevNeighbor = this;
 	}
+	public void connectByTangents(CurveNode other, Area base, ArrayList<Shape> geom) {
+		double[][] times = curve.getTangentTimes(other.curve);
+		for(double[] t : times) {
+			// Determine if valid tangent pair
+			boolean isValid = true;
+			// Invalid if line intersects any non-local geometry
+			Point2D p1 = curve.eval(t[0]), p2 = other.curve.eval(1);
+		}
+		
+	}
 
 	public void draw(Graphics2D g) {
 		g.setColor(Color.GREEN);
@@ -39,8 +50,5 @@ public class CurveNode {
 
 	}
 
-	public void connectByTangents(CurveNode other, Area base, ArrayList<Shape> geom) {
-		// TODO
-	}
 
 }
