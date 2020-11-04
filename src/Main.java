@@ -8,6 +8,7 @@ import java.util.Random;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+import helpers.GeometryBucket;
 import helpers.Util;
 
 @SuppressWarnings("serial")
@@ -94,7 +95,7 @@ public class Main extends JPanel {
 	}
 
 	private static final boolean SIGHT_ENABLED = true;
-	private static final boolean MOVE_ENABLED = false;
+	private static final boolean MOVE_ENABLED = true;
 	private static final boolean MOVE_OUTER_ENABLED = false;
 
 	@Override
@@ -114,7 +115,8 @@ public class Main extends JPanel {
 		if (SIGHT_ENABLED) {
 			long before = System.nanoTime();
 			Area sight = Raycast.raycast(mx + 0.5, my + 0.5, blockage, 2 * mouseRad);
-			System.out.println("Sight in " + (System.nanoTime() - before) / 1e9 + " sec" + "(Obs complexity " + Util.areaComplexity(blockage) + ", Post complexity " + Util.areaComplexity(sight) + ")");
+			System.out.println("Sight in " + (System.nanoTime() - before) / 1e9 + " sec" + "(Obs complexity "
+					+ Util.areaComplexity(blockage) + ", Post complexity " + Util.areaComplexity(sight) + ")");
 			g.setColor(Color.LIGHT_GRAY);
 			g.fill(sight);
 			g.setColor(Color.GRAY);
@@ -123,28 +125,31 @@ public class Main extends JPanel {
 		}
 		if (MOVE_ENABLED) {
 			long before = System.nanoTime();
-			Area move = TrueDist.getMovement(mx, my, new Area(blockage), mouseRad, 32);
-//			PlacementArea move = Shadowcaster.getMovement(null, new Point2D.Double(mx, my), new Area(blockage),
-//					mouseRad / Game.MeterToPixel, 32);
-			Area outer = null;
-			if (MOVE_OUTER_ENABLED) {
-				outer = new Area(move);
-				outer.add(new Area(Util.extendArea(outer, 16)));
-			}
+//			Area move = Movement.getMovement(mx, my, new Area(blockage), mouseRad, 32);
+//			Area outer = null;
+//			if (MOVE_OUTER_ENABLED) {
+//				outer = new Area(move);
+//				outer.add(new Area(Util.extendArea(outer, 16)));
+//			}
+//			System.out.println("Move in " + (System.nanoTime() - before) / 1e9 + " sec");
+//			System.out.println("Obs complexity of " + Util.areaComplexity(blockage) + "; Move complexity of "
+//					+ Util.areaComplexity(move));
+//			if (MOVE_OUTER_ENABLED) {
+//				g.setColor(Color.BLUE);
+//				g.fill(outer);
+//				g.setColor(Color.BLUE);
+//				g.draw(outer);
+//			} else {
+//				g.setColor(Color.BLUE);
+//				g.draw(move);
+//			}
+//			g.setColor(Color.CYAN);
+//			g.fill(move);
+
+			GeometryBucket b = Movement.getMovement(mx, my, new Area(blockage), mouseRad, 32);
+			b.drawNodes(g);
 			System.out.println("Move in " + (System.nanoTime() - before) / 1e9 + " sec");
-			System.out.println("Obs complexity of " + Util.areaComplexity(blockage) + "; Move complexity of "
-					+ Util.areaComplexity(move));
-			if (MOVE_OUTER_ENABLED) {
-				g.setColor(Color.BLUE);
-				g.fill(outer);
-				g.setColor(Color.BLUE);
-				g.draw(outer);
-			} else {
-				g.setColor(Color.BLUE);
-				g.draw(move);
-			}
-			g.setColor(Color.CYAN);
-			g.fill(move);
+
 		}
 
 		// Mouse

@@ -19,6 +19,11 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 	private final ArrayList<java.lang.Double> approxTimes;
 	private final ArrayList<java.lang.Double> approxDists;
 
+	public Cubic(CubicCurve2D other) {
+		this(other.getX1(), other.getY1(), other.getCtrlX1(), other.getCtrlY1(), other.getCtrlX2(), other.getCtrlY2(),
+				other.getX2(), other.getY2());
+	}
+
 	public Cubic(double x0, double y0, double x1, double y1, double x2, double y2, double x3, double y3) {
 		super(x0, y0, x1, y1, x2, y2, x3, y3);
 
@@ -98,6 +103,15 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 			return new Cubic(convexCurve.getX1(), convexCurve.getY1(), convexCurve.getCtrlX1(), convexCurve.getCtrlY1(),
 					convexCurve.getCtrlX2(), convexCurve.getCtrlY2(), convexCurve.getX2(), convexCurve.getCtrlY2());
 		}
+	}
+
+	public boolean isConvex() {
+		return convexCurve == this;
+	}
+
+	// Is it wholly convex or concave?
+	public boolean isRegular() {
+		return convexCurve == this || concaveCurve == this;
 	}
 
 	protected static Color CONVEX = new Color(255, 127, 127);
@@ -297,6 +311,42 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 		return pairs;
 	}
 
+	public boolean intersectsLine(double x1, double y1, double x2, double y2) {
+		for (int i = 1; i < approxPts.size(); i++) {
+			if (Util.linesIntersect(x1, y1, x2, y2, approxPts.get(i - 1).getX(), approxPts.get(i - 1).getY(),
+					approxPts.get(i).getX(), approxPts.get(i).getY())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// Approx closest location on point
+	@Override
+	public double getClosestTime(double x, double y) {
+		if (x1 == x && y1 == y)
+			return 0;
+
+		if (x2 == x && y2 == y)
+			return 1;
+
+		double sqDist = java.lang.Double.MAX_VALUE;
+		double time = -1;
+		for (int i = 0; i < approxTimes.size(); i++) {
+			double dist = Point2D.distanceSq(x, y, approxPts.get(i).getX(), approxPts.get(i).getY());
+			if (dist < sqDist) {
+				double t = approxTimes.get(i);
+				if (dist == 0)
+					return t;
+
+				sqDist = dist;
+				time = t;
+
+			}
+		}
+		return time;
+	}
+
 	public Point2D eval(double t) {
 		return eval(t, x1, y1, ctrlx1, ctrly1, ctrlx2, ctrly2, x2, y2);
 	}
@@ -312,5 +362,25 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 		return new Point2D.Double(
 				mt * mt * mt * x1 + 3.0 * t * mt * mt * ctrlx1 + 3.0 * t * t * mt * ctrlx2 + t * t * t * x2,
 				mt * mt * mt * y1 + 3.0 * t * mt * mt * ctrly1 + 3.0 * t * t * mt * ctrly2 + t * t * t * y2);
+	}
+
+	@Override
+	public double getCX1() {
+		return this.getCtrlX1();
+	}
+
+	@Override
+	public double getCY1() {
+		return this.getCtrlY1();
+	}
+
+	@Override
+	public double getCX2() {
+		return this.getCtrlX2();
+	}
+
+	@Override
+	public double getCY2() {
+		return this.getCtrlY2();
 	}
 }

@@ -44,6 +44,10 @@ public class Quad extends QuadCurve2D.Double implements CustomCurve {
 			return null;
 	}
 
+	public boolean isConvex() {
+		return isConvex;
+	}
+
 	public double[] getTangentPoints(double x, double y) {
 		final double a = x1, b = ctrlx, c = x2;
 		final double j = y1, k = ctrly, l = y2;
@@ -262,6 +266,42 @@ public class Quad extends QuadCurve2D.Double implements CustomCurve {
 		}
 	}
 
+	public boolean intersectsLine(double x1, double y1, double x2, double y2) {
+		for (int i = 1; i < approxPts.size(); i++) {
+			if (Util.linesIntersect(x1, y1, x2, y2, approxPts.get(i - 1).getX(), approxPts.get(i - 1).getY(),
+					approxPts.get(i).getX(), approxPts.get(i).getY())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// Approx closest location on point
+	@Override
+	public double getClosestTime(double x, double y) {
+		if (x1 == x && y1 == y)
+			return 0;
+
+		if (x2 == x && y2 == y)
+			return 1;
+
+		double sqDist = java.lang.Double.MAX_VALUE;
+		double time = -1;
+		for (int i = 0; i < approxTimes.size(); i++) {
+			double dist = Point2D.distanceSq(x, y, approxPts.get(i).getX(), approxPts.get(i).getY());
+			if (dist < sqDist) {
+				double t = approxTimes.get(i);
+				if (dist == 0)
+					return t;
+
+				sqDist = dist;
+				time = t;
+
+			}
+		}
+		return time;
+	}
+
 	public Point2D eval(double t) {
 		return eval(t, x1, y1, ctrlx, ctrly, x2, y2);
 	}
@@ -275,5 +315,25 @@ public class Quad extends QuadCurve2D.Double implements CustomCurve {
 		return new Point2D.Double(mt * mt * x1 + 2 * mt * t * ctrlx + t * t * x2,
 				mt * mt * y1 + 2 * mt * t * ctrly + t * t * y2);
 
+	}
+
+	@Override
+	public double getCX1() {
+		return this.getCtrlX();
+	}
+
+	@Override
+	public double getCY1() {
+		return this.getCtrlY();
+	}
+
+	@Override
+	public double getCX2() {
+		return this.getCtrlX();
+	}
+
+	@Override
+	public double getCY2() {
+		return this.getCtrlY();
 	}
 }
