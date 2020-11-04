@@ -10,16 +10,13 @@ public class Movement {
 //			return new Area();
 			return new GeometryBucket();
 
-		obs = new Area(obs);
-		obs.add(new Area(Util.extendArea(obs, thickness / 2 - 0.5)));
-		if (obs.contains(x, y))
+		final double extend = thickness / 2 - 0.5;
+		Area check = new Area(Util.extendArea(obs, extend));
+		if (check.contains(x, y))
 //			return new Area();
 			return new GeometryBucket();
 
-		// Convert into geometry primitives
-		GeometryBucket bucket = new GeometryBucket(obs);
-
-		return bucket;
+		return new GeometryBucket(obs, extend);
 
 	}
 }
