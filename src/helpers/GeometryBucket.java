@@ -113,8 +113,8 @@ public class GeometryBucket {
 			} else if (path.get(i) instanceof Line2D) {
 				// Do nothing! Only curves are POI
 //				Line2D l = (Line2D) path.get(i);
-			} else if (path.get(i) instanceof CustomCurve) {
-				CustomCurve s = (CustomCurve) path.get(i);
+			} else if (path.get(i) instanceof Curve) {
+				Curve s = (Curve) path.get(i);
 
 				CurveNode c = CurveNode.genCurveNode(s, bounds);
 				if (c != null) {

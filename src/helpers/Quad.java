@@ -5,7 +5,7 @@ import java.awt.geom.QuadCurve2D;
 import java.util.ArrayList;
 
 @SuppressWarnings("serial")
-public class Quad extends QuadCurve2D.Double implements CustomCurve {
+public class Quad extends QuadCurve2D.Double implements Curve {
 
 	@SuppressWarnings("unused")
 	private final boolean isConvex, isConcave;
@@ -212,7 +212,7 @@ public class Quad extends QuadCurve2D.Double implements CustomCurve {
 
 	// Do through rough approximation
 	@Override
-	public double[] getTangentLines(CustomCurve other) {
+	public double[] getTangentLines(Curve other) {
 		if (other instanceof Cubic) {
 			// This method is faster, because it uses quad getTangentPoints.
 			return other.getTangentLines(this);
@@ -251,7 +251,7 @@ public class Quad extends QuadCurve2D.Double implements CustomCurve {
 	}
 
 	// Approximate times of tangent
-	public double[][] getTangentTimes(CustomCurve other) {
+	public double[][] getTangentTimes(Curve other) {
 		if (other instanceof Cubic) {
 			// This method is faster, because it uses quad getTangentTimes.
 			double[][] ret = other.getTangentTimes(this);

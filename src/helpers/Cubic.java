@@ -6,7 +6,7 @@ import java.awt.geom.Point2D;
 import java.util.ArrayList;
 
 @SuppressWarnings("serial")
-public class Cubic extends CubicCurve2D.Double implements CustomCurve {
+public class Cubic extends CubicCurve2D.Double implements Curve {
 
 	protected static final int SPLIT_COUNT = 16;
 
@@ -237,7 +237,7 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 
 	// Do through rough approximation
 	@Override
-	public double[] getTangentLines(CustomCurve other) {
+	public double[] getTangentLines(Curve other) {
 		ArrayList<Point2D> foundPoints = new ArrayList<Point2D>();
 		ArrayList<Point2D> otherPoints = new ArrayList<Point2D>();
 
@@ -287,7 +287,7 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 	}
 
 	// Approximate times of tangent
-	public double[][] getTangentTimes(CustomCurve other) {
+	public double[][] getTangentTimes(Curve other) {
 		ArrayList<double[]> foundPairs = new ArrayList<double[]>();
 
 		// Brute force each point

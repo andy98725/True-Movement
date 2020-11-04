@@ -3,15 +3,15 @@ package helpers;
 import java.awt.Shape;
 import java.awt.geom.Point2D;
 
-public interface CustomCurve extends Shape {
+public interface Curve extends Shape {
 
 	public double[] getTangentPoints(double x, double y);
 
-	public double[] getTangentLines(CustomCurve other);
+	public double[] getTangentLines(Curve other);
 
 	public double[] getTangentTimes(double x, double y);
 	
-	public double[][] getTangentTimes(CustomCurve other);
+	public double[][] getTangentTimes(Curve other);
 
 	public double getClosestTime(double x, double y);
 

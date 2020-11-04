@@ -4,24 +4,24 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.util.*;
 
-import helpers.CustomCurve;
+import helpers.Curve;
 
 public class CurveNode {
 
 	// Curve type node
-	private final CustomCurve curve;
+	private final Curve curve;
 	private final HashMap<CurveConnection, CurveNode> connections;
 	// Prev neighbor connects this's t=0 with its t=1. next neighbor reverses
 	private CurveNode prevNeighbor = null, nextNeighbor = null;
 
 	// Curve node constructor
-	private CurveNode(CustomCurve c) {
+	private CurveNode(Curve c) {
 		curve = c;
 		connections = new HashMap<CurveConnection, CurveNode>();
 
 	}
 
-	public static CurveNode genCurveNode(CustomCurve c, Ellipse2D baseRange) {
+	public static CurveNode genCurveNode(Curve c, Ellipse2D baseRange) {
 		// Only convex nodes are worth considering
 		if (!c.isConvex())
 			return null;
@@ -57,8 +57,8 @@ public class CurveNode {
 						isValid = false;
 						break;
 					}
-				} else if (s instanceof CustomCurve) {
-					CustomCurve c = (CustomCurve) s;
+				} else if (s instanceof Curve) {
+					Curve c = (Curve) s;
 					if (c.intersectsLine(p1.getX(), p1.getY(), p2.getX(), p2.getY())) {
 						isValid = false;
 						break;
@@ -92,7 +92,7 @@ public class CurveNode {
 		g.setColor(Color.RED);
 		for (Map.Entry<CurveConnection, CurveNode> e : connections.entrySet()) {
 			CurveConnection con = e.getKey();
-			CustomCurve other = e.getValue().curve;
+			Curve other = e.getValue().curve;
 			Point2D p1 = curve.eval(con.t0), p2 = other.eval(con.t1);
 
 			g.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
