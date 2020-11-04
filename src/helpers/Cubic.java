@@ -311,7 +311,12 @@ public class Cubic extends CubicCurve2D.Double implements CustomCurve {
 		return pairs;
 	}
 
+	@Override
 	public boolean intersectsLine(double x1, double y1, double x2, double y2) {
+		if(!getBounds().intersectsLine(x1,y1,x2,y2)) {
+			return false;
+		}
+		
 		for (int i = 1; i < approxPts.size(); i++) {
 			if (Util.linesIntersect(x1, y1, x2, y2, approxPts.get(i - 1).getX(), approxPts.get(i - 1).getY(),
 					approxPts.get(i).getX(), approxPts.get(i).getY())) {
