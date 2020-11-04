@@ -1,9 +1,11 @@
-package helpers;
+package helpers.geom;
 
 import java.awt.Color;
 import java.awt.geom.CubicCurve2D;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
+
+import helpers.Util;
 
 @SuppressWarnings("serial")
 public class Cubic extends CubicCurve2D.Double implements Curve {

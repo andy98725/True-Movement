@@ -5,6 +5,7 @@ import java.awt.Shape;
 import java.awt.geom.*;
 import java.util.ArrayList;
 
+import helpers.geom.*;
 import helpers.geomNodes.CurveNode;
 
 public class GeometryBucket {

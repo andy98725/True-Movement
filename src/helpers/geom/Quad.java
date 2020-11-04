@@ -1,8 +1,10 @@
-package helpers;
+package helpers.geom;
 
 import java.awt.geom.Point2D;
 import java.awt.geom.QuadCurve2D;
 import java.util.ArrayList;
+
+import helpers.Util;
 
 @SuppressWarnings("serial")
 public class Quad extends QuadCurve2D.Double implements Curve {

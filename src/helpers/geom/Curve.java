@@ -1,4 +1,4 @@
-package helpers;
+package helpers.geom;
 
 import java.awt.Shape;
 import java.awt.geom.Point2D;

@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Stack;
 
 import helpers.*;
+import helpers.geom.Cubic;
+import helpers.geom.Quad;
 
 public class Raycast {
 

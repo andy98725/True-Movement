@@ -4,7 +4,7 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.util.*;
 
-import helpers.Curve;
+import helpers.geom.Curve;
 
 public class CurveNode {
 
