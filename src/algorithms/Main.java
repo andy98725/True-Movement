@@ -1,3 +1,4 @@
+package algorithms;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -114,7 +115,9 @@ public class Main extends JPanel {
 		g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
 		if (SIGHT_ENABLED) {
 			long before = System.nanoTime();
-			Area sight = Raycast.raycast(mx + 0.5, my + 0.5, blockage, 2 * mouseRad);
+//			Area sight = Raycast.raycastWhole(mx + 0.5, my + 0.5, blockage, 2 * mouseRad);
+//			Area sight = Raycast.raycastIndividuals(mx + 0.5, my + 0.5, blockage, 2 * mouseRad);
+			Area sight = Raycast.raycastIndividuals(mx + 0.5, my + 0.5, blockage, mouseRad);
 			System.out.println("Sight in " + (System.nanoTime() - before) / 1e9 + " sec" + "(Obs complexity "
 					+ Util.areaComplexity(blockage) + ", Post complexity " + Util.areaComplexity(sight) + ")");
 			g.setColor(Color.LIGHT_GRAY);
@@ -125,30 +128,33 @@ public class Main extends JPanel {
 		}
 		if (MOVE_ENABLED) {
 			long before = System.nanoTime();
-//			Area move = Movement.getMovement(mx, my, new Area(blockage), mouseRad, 32);
-//			Area outer = null;
-//			if (MOVE_OUTER_ENABLED) {
-//				outer = new Area(move);
-//				outer.add(new Area(Util.extendArea(outer, 16)));
-//			}
-//			System.out.println("Move in " + (System.nanoTime() - before) / 1e9 + " sec");
-//			System.out.println("Obs complexity of " + Util.areaComplexity(blockage) + "; Move complexity of "
-//					+ Util.areaComplexity(move));
-//			if (MOVE_OUTER_ENABLED) {
-//				g.setColor(Color.BLUE);
-//				g.fill(outer);
-//				g.setColor(Color.BLUE);
-//				g.draw(outer);
-//			} else {
-//				g.setColor(Color.BLUE);
-//				g.draw(move);
-//			}
-//			g.setColor(Color.CYAN);
-//			g.fill(move);
 
 			GeometryBucket b = Movement.getMovement(mx, my, new Area(blockage), mouseRad, 32);
-			b.drawNodes(g);
 			System.out.println("Move in " + (System.nanoTime() - before) / 1e9 + " sec");
+			System.out.println("Obs complexity of " + Util.areaComplexity(blockage) + "; Move complexity of "
+					+ Util.areaComplexity(b.getResult()));
+			b.drawNodes(g);
+
+			Area outer = null;
+			if (MOVE_OUTER_ENABLED) {
+				before = System.nanoTime();
+				outer = new Area(b.getResult());
+				outer.add(new Area(Util.extendArea(outer, 16)));
+				System.out.println("Move extended in " + (System.nanoTime() - before) / 1e9 + " sec");
+			}
+			if (MOVE_OUTER_ENABLED) {
+				g.setColor(Color.BLUE);
+				g.fill(outer);
+				g.setColor(Color.CYAN);
+				g.fill(b.getResult());
+				g.setColor(Color.BLUE);
+				g.draw(outer);
+			} else {
+				g.setColor(Color.CYAN);
+				g.fill(b.getResult());
+				g.setColor(Color.BLUE);
+				g.draw(b.getResult());
+			}
 
 		}
 
@@ -187,6 +193,7 @@ public class Main extends JPanel {
 			int y = BOR + r.nextInt(SIZE - 2 * BOR);
 			blockage.add(new Area(new Rectangle(x - w / 2, y - h / 2, w, h)));
 		}
+
 	}
 
 }

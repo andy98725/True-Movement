@@ -1,7 +1,6 @@
 package helpers.geom;
 
-import java.awt.geom.Point2D;
-import java.awt.geom.QuadCurve2D;
+import java.awt.geom.*;
 import java.util.ArrayList;
 
 import helpers.Util;
@@ -13,12 +12,14 @@ public class Quad extends QuadCurve2D.Double implements Curve {
 	private final boolean isConvex, isConcave;
 	private static final double SPLIT_COUNT = 16;
 
+
 	// For segment on segment estimation
 	private final ArrayList<Point2D> approxPts;
 	private final ArrayList<java.lang.Double> approxDists, approxTimes;
 
 	public Quad(double x0, double y0, double x1, double y1, double x2, double y2) {
 		super(x0, y0, x1, y1, x2, y2);
+
 		isConvex = Util.orientation(x0, y0, x1, y1, x2, y2) > 0;
 		isConcave = Util.orientation(x0, y0, x1, y1, x2, y2) < 0;
 
@@ -126,9 +127,14 @@ public class Quad extends QuadCurve2D.Double implements Curve {
 	}
 
 	private boolean testTangent(int i, double x, double y) {
-		Point2D p = approxPts.get(i), p1 = approxPts.get(i - 1), p2 = approxPts.get(i + 1);
+
+		Point2D p = approxPts.get(i);
+		Point2D p1 = approxPts.get(i - 1);
+		Point2D p2 = approxPts.get(i + 1);
+
 		double oPrev = Util.orientation(x, y, p.getX(), p.getY(), p1.getX(), p1.getY());
 		double oNext = Util.orientation(x, y, p2.getX(), p2.getY(), p.getX(), p.getY());
+
 		if (oPrev != oNext && (i == 1 || oPrev != 0)) {
 			// Potential tangent
 			if (Cubic.ALLOW_INTERSECTING_TANS) {
@@ -223,7 +229,7 @@ public class Quad extends QuadCurve2D.Double implements Curve {
 			ArrayList<Point2D> otherPoints = new ArrayList<Point2D>();
 
 			// Brute force each point
-			for (int i = 1; i < approxPts.size() - 1; i++) {
+			for (int i = 1; i < approxPts.size()-1; i++) {
 				Point2D p = approxPts.get(i);
 				double[] tans = other.getTangentPoints(p.getX(), p.getY());
 				// Test tangent back
@@ -292,10 +298,10 @@ public class Quad extends QuadCurve2D.Double implements Curve {
 
 	@Override
 	public boolean intersectsLine(double x1, double y1, double x2, double y2) {
-		if(!getBounds().intersectsLine(x1,y1,x2,y2)) {
+		if (!getBounds().intersectsLine(x1, y1, x2, y2)) {
 			return false;
 		}
-		
+
 		for (int i = 1; i < approxPts.size(); i++) {
 			if (Util.linesIntersect(x1, y1, x2, y2, approxPts.get(i - 1).getX(), approxPts.get(i - 1).getY(),
 					approxPts.get(i).getX(), approxPts.get(i).getY())) {
@@ -331,6 +337,19 @@ public class Quad extends QuadCurve2D.Double implements Curve {
 		return time;
 	}
 
+	@Override
+	public double distanceAlongCurve(double t1, double t2) {
+		// Find closest times
+		int i1 = 0, i2 = 0;
+		for (int i = 0; i < approxTimes.size(); i++) {
+			if (approxTimes.get(i) <= t1)
+				i1 = i;
+			if (approxTimes.get(i) <= t2)
+				i2 = i;
+		}
+		return Math.abs(approxDists.get(i1) - approxDists.get(i2));
+	}
+
 	public Point2D eval(double t) {
 		return eval(t, x1, y1, ctrlx, ctrly, x2, y2);
 	}
@@ -364,5 +383,35 @@ public class Quad extends QuadCurve2D.Double implements Curve {
 	@Override
 	public double getCY2() {
 		return this.getCtrlY();
+	}
+
+	@Override
+	public Area getProjection(double t, double r) {
+		// TODO
+		Point2D origin = eval(t);
+		r /= 20;
+		return new Area(new Ellipse2D.Double(origin.getX() - r, origin.getY() - r, 2 * r, 2 * r));
+	}
+
+	@Override
+	public Point2D getRaycastPoint1() {
+		double div = Cubic.LARGE_NUM * Math.max(getBounds().width, getBounds().height);
+
+		// Offset p1 slightly
+		double x = x1 + (ctrlx - x1 + ctrlx - x1 - (x2 - x1)) / div;
+		double y = y1 + (ctrly - y1 + ctrly - y1 - (y2 - y1)) / div;
+
+		return new Point2D.Double(x, y);
+	}
+
+	@Override
+	public Point2D getRaycastPoint2() {
+		double div = Cubic.LARGE_NUM * Math.max(getBounds().width, getBounds().height);
+
+		// Offset p2 slightly
+		double x = x2 + (ctrlx - x2 + ctrlx - x2 - (x1 - x2)) / div;
+		double y = y2 + (ctrly - y2 + ctrly - y2 - (y1 - y2)) / div;
+
+		return new Point2D.Double(x, y);
 	}
 }

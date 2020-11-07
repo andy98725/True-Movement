@@ -1,8 +1,7 @@
 package helpers.geom;
 
 import java.awt.Color;
-import java.awt.geom.CubicCurve2D;
-import java.awt.geom.Point2D;
+import java.awt.geom.*;
 import java.util.ArrayList;
 
 import helpers.Util;
@@ -14,7 +13,6 @@ public class Cubic extends CubicCurve2D.Double implements Curve {
 
 	protected static final boolean ALLOW_INTERSECTING_TANS = false;
 
-	@SuppressWarnings("unused")
 	private final CubicCurve2D convexCurve, concaveCurve;
 
 	private final ArrayList<Point2D> approxPts;
@@ -138,10 +136,14 @@ public class Cubic extends CubicCurve2D.Double implements Curve {
 	}
 
 	private boolean testTangent(int i, double x, double y) {
-		Point2D p = approxPts.get(i), p1 = approxPts.get(i - 1), p2 = approxPts.get(i + 1);
+		Point2D p = approxPts.get(i);
+		Point2D p1 = approxPts.get(i - 1);
+		Point2D p2 = approxPts.get(i + 1);
+
 		double oPrev = Util.orientation(x, y, p.getX(), p.getY(), p1.getX(), p1.getY());
 		double oNext = Util.orientation(x, y, p2.getX(), p2.getY(), p.getX(), p.getY());
-		if (oPrev != oNext && (i == 1 || oPrev != 0)) {
+
+		if (oPrev != oNext && (i == 0 || oPrev != 0)) {
 			// Potential tangent
 			if (ALLOW_INTERSECTING_TANS) {
 				return true;
@@ -280,6 +282,7 @@ public class Cubic extends CubicCurve2D.Double implements Curve {
 				foundPoints.add(approxTimes.get(i));
 			}
 		}
+
 		// Convert to array of times
 		double[] times = new double[foundPoints.size()];
 		for (int i = 0; i < foundPoints.size(); i++) {
@@ -315,10 +318,10 @@ public class Cubic extends CubicCurve2D.Double implements Curve {
 
 	@Override
 	public boolean intersectsLine(double x1, double y1, double x2, double y2) {
-		if(!getBounds().intersectsLine(x1,y1,x2,y2)) {
+		if (!getBounds().intersectsLine(x1, y1, x2, y2)) {
 			return false;
 		}
-		
+
 		for (int i = 1; i < approxPts.size(); i++) {
 			if (Util.linesIntersect(x1, y1, x2, y2, approxPts.get(i - 1).getX(), approxPts.get(i - 1).getY(),
 					approxPts.get(i).getX(), approxPts.get(i).getY())) {
@@ -352,6 +355,35 @@ public class Cubic extends CubicCurve2D.Double implements Curve {
 			}
 		}
 		return time;
+	}
+
+	@Override
+	public double distanceAlongCurve(double t1, double t2) {
+		return Math.abs(approxDists.get(getApproxTimeIndex(t1)) - approxDists.get(getApproxTimeIndex(t2)));
+	}
+
+	private int getApproxTimeIndex(double t) {
+		// Binary search time array
+		int iMin = 0, iMax = approxTimes.size() - 1;
+
+		while (iMin + 1 < iMax) {
+			int index = (iMin + iMax) / 2;
+			if (approxTimes.get(index) > t) {
+				iMax = index;
+			} else if (approxTimes.get(index + 1) < t) {
+				iMin = index;
+			} else {
+				// Between index and index+1
+				iMin = index;
+				iMax = index + 1;
+			}
+		}
+
+		if (t <= (approxTimes.get(iMin) + approxTimes.get(iMax) / 2))
+			return iMin;
+		else
+			return iMax;
+
 	}
 
 	public Point2D eval(double t) {
@@ -389,5 +421,47 @@ public class Cubic extends CubicCurve2D.Double implements Curve {
 	@Override
 	public double getCY2() {
 		return this.getCtrlY2();
+	}
+
+	// https://math.stackexchange.com/questions/301736/how-do-i-find-a-bezier-curve-that-goes-through-a-series-of-points
+	public static Cubic getCurveFollowingPoints(double x1, double y1, double x2, double y2, double x3, double y3,
+			double x4, double y4) {
+		double rx2 = (-5 * x1 + 18 * x2 - 9 * x3 + 2 * x4) / 6;
+		double ry2 = (-5 * y1 + 18 * y2 - 9 * y3 + 2 * y4) / 6;
+		double rx3 = (2 * x1 - 9 * x2 + 18 * x3 - 5 * x4) / 6;
+		double ry3 = (2 * y1 - 9 * y2 + 18 * y3 - 5 * y4) / 6;
+		return new Cubic(x1, y1, rx2, ry2, rx3, ry3, x4, y4);
+	}
+
+	@Override
+	public Area getProjection(double t, double r) {
+		// TODO
+		Point2D origin = eval(t);
+		r /= 20;
+		return new Area(new Ellipse2D.Double(origin.getX() - r, origin.getY() - r, 2 * r, 2 * r));
+	}
+
+	public static final double LARGE_NUM = 1E6;
+
+	@Override
+	public Point2D getRaycastPoint1() {
+		double div = LARGE_NUM * Math.max(getBounds().width, getBounds().height);
+
+		// Offset p1 slightly
+		double x = x1 + (ctrlx1 - x1 + ctrlx2 - x1 - (x2 - x1)) / div;
+		double y = y1 + (ctrly1 - y1 + ctrly2 - y1 - (y2 - y1)) / div;
+
+		return new Point2D.Double(x, y);
+	}
+
+	@Override
+	public Point2D getRaycastPoint2() {
+		double div = LARGE_NUM * Math.max(getBounds().width, getBounds().height);
+
+		// Offset p2 slightly
+		double x = x2 + (ctrlx2 - x2 + ctrlx1 - x2 - (x1 - x2)) / div;
+		double y = y2 + (ctrly2 - y2 + ctrly1 - y2 - (y1 - y2)) / div;
+
+		return new Point2D.Double(x, y);
 	}
 }

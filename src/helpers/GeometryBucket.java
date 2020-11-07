@@ -4,19 +4,21 @@ import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.geom.*;
 import java.util.ArrayList;
+import java.util.PriorityQueue;
 
 import helpers.geom.*;
 import helpers.geomNodes.CurveNode;
+import helpers.geomNodes.RecursionCase;
 
 public class GeometryBucket {
 
 	private final Area base;
-	private final ArrayList<Shape> path = new ArrayList<Shape>();
-	private final ArrayList<Shape> rawGeom = new ArrayList<Shape>();
 
-	private final ArrayList<CurveNode> nodes;
+	private final ArrayList<CurveNode> nodes = new ArrayList<CurveNode>();
 
 	private final double originX, originY, rad;
+
+	private final Area result;
 
 	public GeometryBucket() {
 		this(new Area(), 1, 0, 0, 0);
@@ -31,6 +33,22 @@ public class GeometryBucket {
 		// This allows a complete exclusion of a pointNode class.
 		base = new Area(a);
 		base.add(new Area(Util.extendArea(a, extend)));
+
+		generateGeometry();
+
+		genAndConnectNodes();
+
+		addStartingNode();
+		propogate();
+
+		result = getRaycast();
+
+	}
+
+	private final ArrayList<Shape> path = new ArrayList<Shape>();
+	private final ArrayList<Shape> rawGeom = new ArrayList<Shape>();
+
+	private void generateGeometry() {
 		double[] pcoords = new double[2];
 		double[] coords = new double[6];
 		double[] mcoords = new double[2];
@@ -84,9 +102,6 @@ public class GeometryBucket {
 			}
 		}
 
-		nodes = new ArrayList<CurveNode>();
-		genAndConnectNodes();
-
 	}
 
 	private boolean saveStart;
@@ -94,7 +109,7 @@ public class GeometryBucket {
 
 	private void genAndConnectNodes() {
 		final Ellipse2D bounds = new Ellipse2D.Double(originX - rad, originY - rad, 2 * rad, 2 * rad);
-		
+
 		prevLink = null;
 		startLink = null;
 		saveStart = true;
@@ -147,6 +162,36 @@ public class GeometryBucket {
 			n.draw(g);
 		}
 
+	}
+
+	private final PriorityQueue<RecursionCase> recurseCases = new PriorityQueue<RecursionCase>();
+
+	private void addStartingNode() {
+		for (CurveNode n : nodes) {
+			n.addStartingCases(recurseCases, originX, originY, rad, rawGeom);
+		}
+
+	}
+
+	private void propogate() {
+		while (!recurseCases.isEmpty()) {
+			recurseCases.remove().propogate(recurseCases);
+		}
+	}
+
+	private Area getRaycast() {
+		Area res = new Area();
+//		Area res = new Area(new Ellipse2D.Double(originX - rad, originY - rad, 2 * rad, 2 * rad));
+//		Raycast.raycastIndividuals(res, originX, originY, rawGeom, null);
+		for (CurveNode n : nodes) {
+			res.add(n.getDistShape(rawGeom));
+		}
+
+		return res;
+	}
+
+	public Area getResult() {
+		return result;
 	}
 
 }

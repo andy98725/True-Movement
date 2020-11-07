@@ -1,11 +1,13 @@
+package removeThese;
 import java.awt.geom.Area;
 import java.awt.geom.PathIterator;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import algorithms.Raycast;
 import helpers.Util;
 
-public class TrueDist {
+public class OldMove {
 
 	private static final double EXTEND = 2;
 

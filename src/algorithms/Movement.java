@@ -1,3 +1,4 @@
+package algorithms;
 import java.awt.geom.Area;
 
 import helpers.GeometryBucket;
