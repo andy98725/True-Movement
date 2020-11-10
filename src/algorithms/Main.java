@@ -91,13 +91,16 @@ public class Main extends JPanel {
 	}
 
 	private void mouseWheel(int dir) {
-		mouseRad += 1 * dir * INCREMENT;
+		mouseRad -= 1 * dir * INCREMENT;
 		repaint();
 	}
 
 	private static final boolean SIGHT_ENABLED = true;
+	private static final boolean DISP_SIGHT = true;
 	private static final boolean MOVE_ENABLED = true;
+	private static final boolean DISP_MOVE = true;
 	private static final boolean MOVE_OUTER_ENABLED = false;
+	private static final double MOVE_RAD = 16;
 
 	@Override
 	public void paint(Graphics graphics) {
@@ -115,11 +118,10 @@ public class Main extends JPanel {
 		g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
 		if (SIGHT_ENABLED) {
 			long before = System.nanoTime();
-//			Area sight = Raycast.raycastWhole(mx + 0.5, my + 0.5, blockage, 2 * mouseRad);
-//			Area sight = Raycast.raycastIndividuals(mx + 0.5, my + 0.5, blockage, 2 * mouseRad);
-			Area sight = Raycast.raycastIndividuals(mx + 0.5, my + 0.5, blockage, mouseRad);
-			System.out.println("Sight in " + (System.nanoTime() - before) / 1e9 + " sec" + "(Obs complexity "
-					+ Util.areaComplexity(blockage) + ", Post complexity " + Util.areaComplexity(sight) + ")");
+			Area sight = new Raycast(mx + 0.5, my + 0.5, blockage, 2*mouseRad).get();
+			if (DISP_SIGHT)
+				System.out.println("Sight in " + (System.nanoTime() - before) / 1e9 + " sec" + "(Obs complexity "
+						+ Util.areaComplexity(blockage) + ", Post complexity " + Util.areaComplexity(sight) + ")");
 			g.setColor(Color.LIGHT_GRAY);
 			g.fill(sight);
 			g.setColor(Color.GRAY);
@@ -129,18 +131,24 @@ public class Main extends JPanel {
 		if (MOVE_ENABLED) {
 			long before = System.nanoTime();
 
-			GeometryBucket b = Movement.getMovement(mx, my, new Area(blockage), mouseRad, 32);
-			System.out.println("Move in " + (System.nanoTime() - before) / 1e9 + " sec");
-			System.out.println("Obs complexity of " + Util.areaComplexity(blockage) + "; Move complexity of "
-					+ Util.areaComplexity(b.getResult()));
-			b.drawNodes(g);
+			GeometryBucket b = Movement.getMovement(mx, my, new Area(blockage), mouseRad, MOVE_RAD * 2);
+
+			if (DISP_MOVE) {
+				System.out.println("Move in " + (System.nanoTime() - before) / 1e9 + " sec");
+				System.out.println("Obs complexity of " + Util.areaComplexity(blockage) + "; Move complexity of "
+						+ Util.areaComplexity(b.getResult()));
+			}
+//			b.drawNodes(g);
 
 			Area outer = null;
 			if (MOVE_OUTER_ENABLED) {
 				before = System.nanoTime();
 				outer = new Area(b.getResult());
-				outer.add(new Area(Util.extendArea(outer, 16)));
-				System.out.println("Move extended in " + (System.nanoTime() - before) / 1e9 + " sec");
+				outer.add(new Area(Util.extendArea(outer, MOVE_RAD)));
+				if (DISP_MOVE) {
+					System.out.println("Move extended in " + (System.nanoTime() - before) / 1e9 + " sec");
+					System.out.println("Complexity of " + Util.areaComplexity(outer));
+				}
 			}
 			if (MOVE_OUTER_ENABLED) {
 				g.setColor(Color.BLUE);
@@ -167,6 +175,15 @@ public class Main extends JPanel {
 	private static final int BOR = 32;
 
 	private void generateBlocks() {
+//		generateBlocksStatic();
+		generateBlocksRandom();
+
+		blockage.add(new Area(Util.extendArea(blockage, 16)));
+//		blockage = new Area(Util.extendArea(blockage, 16));
+	}
+
+	@SuppressWarnings("unused")
+	private void generateBlocksRandom() {
 		Random r = new Random();
 
 		blockage = new Area();
@@ -194,6 +211,19 @@ public class Main extends JPanel {
 			blockage.add(new Area(new Rectangle(x - w / 2, y - h / 2, w, h)));
 		}
 
+	}
+
+	@SuppressWarnings("unused")
+	private void generateBlocksStatic() {
+		blockage = new Area();
+		int x = SIZE / 2, y = SIZE / 2;
+		int w = SIZE / 2, h = SIZE / 2;
+//		blockage.add(new Area(new Rectangle(x - w / 2, y - h / 2, w, h)));
+		blockage.add(new Area(new Ellipse2D.Double(x - w / 2, y - h / 2, w, h)));
+
+		x *= 1.5;
+		y *= 1.5;
+//		blockage.subtract(new Area(new Ellipse2D.Double(x - w / 2, y - h / 2, w, h)));
 	}
 
 }

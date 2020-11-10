@@ -5,6 +5,7 @@ import java.awt.geom.*;
 import java.util.*;
 
 import algorithms.Raycast;
+import helpers.Util;
 import helpers.geom.Curve;
 
 public class CurveNode {
@@ -32,6 +33,14 @@ public class CurveNode {
 			return null;
 
 		return new CurveNode(c);
+	}
+
+	public boolean matches(Point2D p1) {
+		return curve.getP1().equals(p1);
+	}
+
+	public Point2D getP2() {
+		return curve.getP2();
 	}
 
 	// Connect this t=1 to other t=0
@@ -101,13 +110,14 @@ public class CurveNode {
 
 				if (s instanceof Line2D) {
 					Line2D l = (Line2D) s;
-					if (l.intersectsLine(x, y, p.getX(), p.getY()) && !p.equals(l.getP1()) && !p.equals(l.getP2())) {
+					if (Util.linesIntersect(l.getX1(), l.getY1(), l.getX2(), l.getY2(), x, y, p.getX(), p.getY())
+							&& !p.equals(l.getP1()) && !p.equals(l.getP2())) {
 						isValid = false;
 						break;
 					}
 				} else if (s instanceof Curve) {
 					Curve c = (Curve) s;
-					if (c.intersectsLine(x, y, p.getX(), p.getY()) && p.equals(c.getP1()) && !p.equals(c.getP2())) {
+					if (c.intersectsLine(x, y, p.getX(), p.getY()) && !p.equals(c.getP1()) && !p.equals(c.getP2())) {
 						isValid = false;
 						break;
 					}
@@ -196,26 +206,33 @@ public class CurveNode {
 		return maxDist;
 	}
 
-	public Area getDistShape(ArrayList<Shape> geom) {
+	public Area getDistShape(Area base) {
 		Area ret = new Area();
 
+		// Explicitly do 0 and 1
+//		distances.put(0.0, getDistance(0.0));
+//		distances.put(1.0, getDistance(1.0));
 		for (Map.Entry<Double, Double> e : distances.entrySet()) {
 			if (e.getValue() > 0)
-				ret.add(subShape(e.getKey(), e.getValue(), geom));
+				ret.add(subShape(e.getKey(), e.getValue(), base));
 		}
 
 		return ret;
 	}
 
-	private Area subShape(double t, double r, ArrayList<Shape> geom) {
+	private Area subShape(double t, double r, Area base) {
 		Area curveShape = curve.getProjection(t, r);
+		Area c2 = new Area(curveShape);
+		
+		// Raycast from slightly outside of curve
+		Point2D p = curve.getRaycastPoint(0);
+		Point2D p2 = curve.getRaycastPoint(1);
 
-		// Get point slightly above & in
-		Point2D p1 = curve.getRaycastPoint1();
-		Point2D p2 = curve.getRaycastPoint2();
+		curveShape = new Raycast(curveShape, p.getX(), p.getY(), base, curve).get();
+		c2 = new Raycast(c2, p2.getX(), p2.getY(), base, curve).get();
 
-		Raycast.raycastIndividuals(curveShape, p1.getX(), p1.getY(), geom, curve);
-		Raycast.raycastIndividuals(curveShape, p2.getX(), p2.getY(), geom, curve);
+		curveShape.add(c2);
+		curveShape.subtract(new Area(curve));
 
 		return curveShape;
 

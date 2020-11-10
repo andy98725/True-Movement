@@ -6,6 +6,7 @@ import java.awt.geom.*;
 import java.util.ArrayList;
 import java.util.PriorityQueue;
 
+import algorithms.Raycast;
 import helpers.geom.*;
 import helpers.geomNodes.CurveNode;
 import helpers.geomNodes.RecursionCase;
@@ -27,12 +28,17 @@ public class GeometryBucket {
 	public GeometryBucket(Area a, double extend, double x, double y, double maxRad) {
 		this.originX = x;
 		this.originY = y;
-		this.rad = maxRad;
+		this.rad = maxRad - extend;
 		// Since the area is necessarily extended, we can make the nice assumption
 		// that the only POI are curved nodes.
 		// This allows a complete exclusion of a pointNode class.
 		base = new Area(a);
 		base.add(new Area(Util.extendArea(a, extend)));
+
+		// Limit?
+//		double erad = maxRad + 1;
+//		base.intersect(new Area(new Ellipse2D.Double(x - erad, y - erad, 2 * erad, 2 * erad)));
+//		baseExtended.intersect(new Area(new Ellipse2D.Double(x - erad, y - erad, 2 * erad, 2 * erad)));
 
 		generateGeometry();
 
@@ -49,6 +55,8 @@ public class GeometryBucket {
 	private final ArrayList<Shape> rawGeom = new ArrayList<Shape>();
 
 	private void generateGeometry() {
+		Rectangle2D bounds = new Rectangle2D.Double(originX - rad, originY - rad, 2 * rad, 2 * rad);
+
 		double[] pcoords = new double[2];
 		double[] coords = new double[6];
 		double[] mcoords = new double[2];
@@ -63,38 +71,51 @@ public class GeometryBucket {
 			case PathIterator.SEG_CLOSE:
 				coords[0] = mcoords[0];
 				coords[1] = mcoords[1];
-				rawGeom.add(new Line2D.Double(pcoords[0], pcoords[1], coords[0], coords[1]));
+				if (bounds.intersectsLine(pcoords[0], pcoords[1], coords[0], coords[1])) {
+					Line2D l = new Line2D.Double(pcoords[0], pcoords[1], coords[0], coords[1]);
+					rawGeom.add(l);
+					path.add(l);
+				}
 				path.add(null); // Null signifies close of shape
 				break;
 			case PathIterator.SEG_LINETO:
-				Line2D l = new Line2D.Double(pcoords[0], pcoords[1], coords[0], coords[1]);
-				rawGeom.add(l);
-				path.add(l);
+				if (bounds.intersectsLine(pcoords[0], pcoords[1], coords[0], coords[1])) {
+					Line2D l = new Line2D.Double(pcoords[0], pcoords[1], coords[0], coords[1]);
+					rawGeom.add(l);
+					path.add(l);
+				}
 				pcoords[0] = coords[0];
 				pcoords[1] = coords[1];
 				break;
 			case PathIterator.SEG_QUADTO:
-				Quad q = new Quad(pcoords[0], pcoords[1], coords[0], coords[1], coords[2], coords[3]);
-				rawGeom.add(q);
-				path.add(q);
+				Quad q = new Quad(pcoords, coords);
+				if (q.intersects(bounds)) {
+					rawGeom.add(q);
+					path.add(q);
+				}
 				pcoords[0] = coords[2];
 				pcoords[1] = coords[3];
 				break;
 			case PathIterator.SEG_CUBICTO:
 				// Split cubics to ensure consistent concavity and convexity
-				Cubic base = new Cubic(pcoords[0], pcoords[1], coords[0], coords[1], coords[2], coords[3], coords[4],
-						coords[5]);
+				Cubic base = new Cubic(pcoords, coords);
 				if (base.isRegular()) {
-					rawGeom.add(base);
-					path.add(base);
+					if (base.intersects(bounds)) {
+						rawGeom.add(base);
+						path.add(base);
+					}
 				} else {
 					// Split into regulars at 0.5
 					Cubic c1 = new Cubic(base.subCurve(0, 0.5));
-					rawGeom.add(c1);
-					path.add(c1);
+					if (c1.intersects(bounds)) {
+						rawGeom.add(c1);
+						path.add(c1);
+					}
 					Cubic c2 = new Cubic(base.subCurve(0.5, 1));
-					rawGeom.add(c2);
-					path.add(c2);
+					if (c2.intersects(bounds)) {
+						rawGeom.add(c2);
+						path.add(c2);
+					}
 				}
 				pcoords[0] = coords[4];
 				pcoords[1] = coords[5];
@@ -104,38 +125,40 @@ public class GeometryBucket {
 
 	}
 
-	private boolean saveStart;
-	private CurveNode prevLink, startLink;
-
 	private void genAndConnectNodes() {
 		final Ellipse2D bounds = new Ellipse2D.Double(originX - rad, originY - rad, 2 * rad, 2 * rad);
 
-		prevLink = null;
-		startLink = null;
-		saveStart = true;
+		CurveNode prevLink = null;
+		Point2D prevP = null;
+		CurveNode startLink = null;
+		boolean saveStart = true;
 
 		// Generate nodes from path
 		for (int i = 0; i < path.size(); i++) {
 			// Close segment
 			if (path.get(i) == null) {
 				// Connect previous to start
-				if (prevLink != null && startLink != null) {
+				if (prevLink != null && startLink != null && startLink.matches(prevP)) {
 					prevLink.setNextNeighbor(startLink);
 				}
 				prevLink = null;
+				prevP = null;
 				startLink = null;
 				saveStart = true;
 
 			} else if (path.get(i) instanceof Line2D) {
-				// Do nothing! Only curves are POI
-//				Line2D l = (Line2D) path.get(i);
+				// Propogate previous point
+				Line2D l = (Line2D) path.get(i);
+				if (l.getP1().equals(prevP)) {
+					prevP = l.getP2();
+				}
 			} else if (path.get(i) instanceof Curve) {
 				Curve s = (Curve) path.get(i);
 
 				CurveNode c = CurveNode.genCurveNode(s, bounds);
 				if (c != null) {
 					nodes.add(c);
-					if (prevLink != null)
+					if (prevLink != null && c.matches(prevP))
 						prevLink.setNextNeighbor(c);
 				}
 				if (saveStart) {
@@ -143,6 +166,7 @@ public class GeometryBucket {
 					startLink = c;
 				}
 				prevLink = c;
+				prevP = c != null ? c.getP2() : null;
 
 			}
 		}
@@ -180,11 +204,10 @@ public class GeometryBucket {
 	}
 
 	private Area getRaycast() {
-		Area res = new Area();
-//		Area res = new Area(new Ellipse2D.Double(originX - rad, originY - rad, 2 * rad, 2 * rad));
-//		Raycast.raycastIndividuals(res, originX, originY, rawGeom, null);
+//		Area res = new Area();
+		Area res = new Raycast(originX, originY, base, rad).get();
 		for (CurveNode n : nodes) {
-			res.add(n.getDistShape(rawGeom));
+			res.add(n.getDistShape(base));
 		}
 
 		return res;

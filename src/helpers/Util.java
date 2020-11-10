@@ -3,12 +3,10 @@ package helpers;
 import java.awt.*;
 import java.awt.geom.*;
 
-public class Util {
+import helpers.geom.Cubic;
+import helpers.geom.Quad;
 
-	public static Shape extendArea(Shape a, double dist) {
-		Stroke extendStroke = new BasicStroke(-1 + 2 * (float) dist, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND);
-		return extendStroke.createStrokedShape(a);
-	}
+public class Util {
 
 	public static Area createFlattenedArea(Area a, double flatness) {
 		Path2D path = new Path2D.Double();
@@ -16,30 +14,91 @@ public class Util {
 		return new Area(path);
 	}
 
-	public static boolean lineIntersectsArea(double x1, double y1, double x2, double y2, Area a) {
-		final double[] coords = new double[6];
-		for (PathIterator pi = a.getPathIterator(null, 1); !pi.isDone(); pi.next()) {
-			final int oper = pi.currentSegment(coords);
+	public static Point2D getPointOnArea(Area shape, Point2D nearby) {
+		if (shape.isEmpty()) {
+			return null;
+		}
+
+		Point2D closest = null;
+		double distSq = Double.MAX_VALUE;
+		double[] coords = new double[6];
+		double[] pcoords = new double[2], mcoords = new double[2];
+		for (PathIterator iter = shape.getPathIterator(null); !iter.isDone(); iter.next()) {
+			int oper = iter.currentSegment(coords);
 			switch (oper) {
 			case PathIterator.SEG_MOVETO:
-				coords[4] = coords[0];
-				coords[5] = coords[1];
-				coords[2] = coords[0];
-				coords[3] = coords[1];
+				System.arraycopy(coords, 0, mcoords, 0, 2);
+				System.arraycopy(coords, 0, pcoords, 0, 2);
 				break;
 			case PathIterator.SEG_CLOSE:
-				coords[0] = coords[4];
-				coords[1] = coords[5];
+				System.arraycopy(mcoords, 0, coords, 0, 2);
 			case PathIterator.SEG_LINETO:
-				if (Line2D.linesIntersect(x1, y1, x2, y2, coords[0], coords[1], coords[2], coords[3])) {
-					return true;
+				Point2D p = getClosestPointOnSegment(coords[0], coords[1], coords[2], coords[3], nearby.getX(),
+						nearby.getY());
+
+				if (p.distanceSq(nearby) < distSq) {
+					distSq = p.distanceSq(nearby);
+					closest = p;
+					if (distSq == 0)
+						return closest;
 				}
-				coords[2] = coords[0];
-				coords[3] = coords[1];
+
+				// Copy coords[0,1] to pcoords[0,1]
+				System.arraycopy(coords, 0, pcoords, 0, 2);
 				break;
+			case PathIterator.SEG_QUADTO:
+				Quad q = new Quad(pcoords, coords);
+				p = q.eval(q.getClosestTime(nearby.getX(), nearby.getY()));
+
+				if (p.distanceSq(nearby) < distSq) {
+					distSq = p.distanceSq(nearby);
+					closest = p;
+					if (distSq == 0)
+						return closest;
+				}
+
+				// Copy coords[2,3] to pcoords[0,1]
+				System.arraycopy(coords, 2, pcoords, 0, 2);
+			case PathIterator.SEG_CUBICTO:
+				Cubic c = new Cubic(pcoords, coords);
+				p = c.eval(c.getClosestTime(nearby.getX(), nearby.getY()));
+
+				if (p.distanceSq(nearby) < distSq) {
+					distSq = p.distanceSq(nearby);
+					closest = p;
+					if (distSq == 0)
+						return closest;
+				}
+
+				// Copy coords[4,5] to pcoords[0,1]
+				System.arraycopy(coords, 4, pcoords, 0, 2);
+
 			}
 		}
-		return false;
+		return closest;
+	}
+
+	private static Point2D getClosestPointOnSegment(double sx1, double sy1, double sx2, double sy2, double px,
+			double py) {
+		double xDelta = sx2 - sx1;
+		double yDelta = sy2 - sy1;
+
+		if ((xDelta == 0) && (yDelta == 0)) {
+			return new Point2D.Double(sx1, sy1);
+		}
+
+		double u = ((px - sx1) * xDelta + (py - sy1) * yDelta) / (xDelta * xDelta + yDelta * yDelta);
+
+		final Point2D closestPoint;
+		if (u < 0) {
+			closestPoint = new Point2D.Double(sx1, sy1);
+		} else if (u > 1) {
+			closestPoint = new Point2D.Double(sx2, sy2);
+		} else {
+			closestPoint = new Point2D.Double(sx1 + u * xDelta, sy1 + u * yDelta);
+		}
+
+		return closestPoint;
 	}
 
 	public static int orientation(double x0, double y0, double x1, double y1, double x2, double y2) {
@@ -128,22 +187,19 @@ public class Util {
 
 	public static boolean linesIntersect(double x1, double y1, double x2, double y2, double x3, double y3, double x4,
 			double y4) {
-		return ((relativeCCW(x1, y1, x2, y2, x3, y3) * relativeCCW(x1, y1, x2, y2, x4, y4) <= 0)
-				&& (relativeCCW(x3, y3, x4, y4, x1, y1) * relativeCCW(x3, y3, x4, y4, x2, y2) <= 0));
+		return ((relativeCCW(x1, y1, x2, y2, x3, y3) * relativeCCW(x1, y1, x2, y2, x4, y4) < 0)
+				&& (relativeCCW(x3, y3, x4, y4, x1, y1) * relativeCCW(x3, y3, x4, y4, x2, y2) < 0));
 	}
 
 	private static final double EPSILON = 1E-2;
 
-	public static Line2D genShortenedLine(double x, double y, double x2, double y2) {
-		// Inch in direction of each other
-		double theta = Math.atan2(y2 - y, x2 - x);
-		return new Line2D.Double(x + EPSILON * Math.cos(theta), y + EPSILON * Math.sin(theta),
-				x2 - EPSILON * Math.cos(theta), y2 - EPSILON * Math.sin(theta));
+	public static Point2D inchTowards(double x, double y, double dx, double dy) {
+		double t = Math.atan2(dy - y, dx - x);
+		return new Point2D.Double(x + EPSILON * Math.cos(t), y + EPSILON * Math.sin(t));
 	}
 
-	public static Point2D genOffsetPoint(double x, double y, double pTheta, double nTheta) {
-		double theta = Math.atan2(-Math.sin(pTheta) - Math.sin(nTheta), -Math.cos(pTheta) - Math.cos(nTheta));
-		return new Point2D.Double(x + EPSILON * Math.cos(theta), y + EPSILON * Math.sin(theta));
+	public static Shape extendArea(Shape a, double dist) {
+		Stroke extendStroke = new BasicStroke(-1 + 2 * (float) dist, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND);
+		return extendStroke.createStrokedShape(a);
 	}
-
 }

@@ -12,10 +12,13 @@ public class Quad extends QuadCurve2D.Double implements Curve {
 	private final boolean isConvex, isConcave;
 	private static final double SPLIT_COUNT = 16;
 
-
 	// For segment on segment estimation
 	private final ArrayList<Point2D> approxPts;
 	private final ArrayList<java.lang.Double> approxDists, approxTimes;
+
+	public Quad(double[] pcoords, double[] coords) {
+		this(pcoords[0], pcoords[1], coords[0], coords[1], coords[2], coords[3]);
+	}
 
 	public Quad(double x0, double y0, double x1, double y1, double x2, double y2) {
 		super(x0, y0, x1, y1, x2, y2);
@@ -229,7 +232,7 @@ public class Quad extends QuadCurve2D.Double implements Curve {
 			ArrayList<Point2D> otherPoints = new ArrayList<Point2D>();
 
 			// Brute force each point
-			for (int i = 1; i < approxPts.size()-1; i++) {
+			for (int i = 1; i < approxPts.size() - 1; i++) {
 				Point2D p = approxPts.get(i);
 				double[] tans = other.getTangentPoints(p.getX(), p.getY());
 				// Test tangent back
@@ -339,15 +342,31 @@ public class Quad extends QuadCurve2D.Double implements Curve {
 
 	@Override
 	public double distanceAlongCurve(double t1, double t2) {
-		// Find closest times
-		int i1 = 0, i2 = 0;
-		for (int i = 0; i < approxTimes.size(); i++) {
-			if (approxTimes.get(i) <= t1)
-				i1 = i;
-			if (approxTimes.get(i) <= t2)
-				i2 = i;
+		return Math.abs(approxDists.get(getApproxTimeIndex(t1)) - approxDists.get(getApproxTimeIndex(t2)));
+	}
+
+	private int getApproxTimeIndex(double t) {
+		// Binary search time array
+		int iMin = 0, iMax = approxTimes.size() - 1;
+
+		while (iMin + 1 < iMax) {
+			int index = (iMin + iMax) / 2;
+			if (approxTimes.get(index) > t) {
+				iMax = index;
+			} else if (approxTimes.get(index + 1) < t) {
+				iMin = index;
+			} else {
+				// Between index and index+1
+				iMin = index;
+				iMax = index + 1;
+			}
 		}
-		return Math.abs(approxDists.get(i1) - approxDists.get(i2));
+
+		if (t <= (approxTimes.get(iMin) + approxTimes.get(iMax) / 2))
+			return iMin;
+		else
+			return iMax;
+
 	}
 
 	public Point2D eval(double t) {
@@ -394,24 +413,28 @@ public class Quad extends QuadCurve2D.Double implements Curve {
 	}
 
 	@Override
-	public Point2D getRaycastPoint1() {
-		double div = Cubic.LARGE_NUM * Math.max(getBounds().width, getBounds().height);
+	public Point2D getRaycastPoint(double t) {
+		Point2D ret = eval(t);
+		if (t <= 0.5) {
+			// Move towards ctrl and away from p2
+			double ac = Math.atan2(ctrly - ret.getY(), ctrlx - ret.getX());
+			double ap = Math.atan2(y2 - ret.getY(), x2 - ret.getX());
+			ret.setLocation(ret.getX() + Cubic.EPSILON * (Math.cos(ac) - Cubic.EPSILON * (Math.cos(ap))),
+					ret.getY() + Cubic.EPSILON * (Math.sin(ac) - Cubic.EPSILON * (Math.sin(ap))));
 
-		// Offset p1 slightly
-		double x = x1 + (ctrlx - x1 + ctrlx - x1 - (x2 - x1)) / div;
-		double y = y1 + (ctrly - y1 + ctrly - y1 - (y2 - y1)) / div;
-
-		return new Point2D.Double(x, y);
+		}
+		if (t >= 0.5) {
+			// Move towards ctrl and away from p1
+			double ac = Math.atan2(ctrly - ret.getY(), ctrlx - ret.getX());
+			double ap = Math.atan2(y1 - ret.getY(), x1 - ret.getX());
+			ret.setLocation(ret.getX() + Cubic.EPSILON * (Math.cos(ac) - Cubic.EPSILON * (Math.cos(ap))),
+					ret.getY() + Cubic.EPSILON * (Math.sin(ac) - Cubic.EPSILON * (Math.sin(ap))));
+		}
+		return ret;
 	}
 
-	@Override
-	public Point2D getRaycastPoint2() {
-		double div = Cubic.LARGE_NUM * Math.max(getBounds().width, getBounds().height);
-
-		// Offset p2 slightly
-		double x = x2 + (ctrlx - x2 + ctrlx - x2 - (x1 - x2)) / div;
-		double y = y2 + (ctrly - y2 + ctrly - y2 - (y1 - y2)) / div;
-
-		return new Point2D.Double(x, y);
+	public boolean equals(Quad q) {
+		return x1 == q.x1 && y1 == q.y1 && ctrlx == q.ctrlx && ctrly == q.ctrly && x2 == q.x2 && y2 == q.y2;
 	}
+
 }
