@@ -105,7 +105,7 @@ public class Util {
 		return (int) Math.signum((y1 - y0) * (x2 - x1) - (y2 - y1) * (x1 - x0));
 	}
 
-	public static int areaComplexity(Area a) {
+	public static int areaComplexity(Shape a) {
 		int size = 0;
 		PathIterator i = a.getPathIterator(null);
 		while (!i.isDone()) {
