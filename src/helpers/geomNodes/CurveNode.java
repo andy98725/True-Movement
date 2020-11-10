@@ -17,6 +17,8 @@ public class CurveNode {
 	// Prev neighbor connects this's t=0 with its t=1. next neighbor reverses
 	private CurveNode prevNeighbor = null, nextNeighbor = null;
 
+	private boolean shouldRaycast = true;
+
 	// Curve node constructor
 	private CurveNode(Curve c) {
 		curve = c;
@@ -60,33 +62,7 @@ public class CurveNode {
 		for (double[] t : times) {
 			Point2D p1 = curve.eval(t[0]), p2 = other.curve.eval(t[1]);
 
-			boolean isValid = true;
-			// Invalid if line intersects any non-local geometry
-			for (Shape s : geom) {
-				if (s.equals(curve) || s.equals(other.curve))
-					continue;
-
-				if (s instanceof Line2D) {
-					Line2D l = (Line2D) s;
-					if (l.intersectsLine(p1.getX(), p1.getY(), p2.getX(), p2.getY())) {
-						isValid = false;
-						break;
-					}
-				} else if (s instanceof Curve) {
-					Curve c = (Curve) s;
-					if (c.intersectsLine(p1.getX(), p1.getY(), p2.getX(), p2.getY())) {
-						isValid = false;
-						break;
-					}
-				}
-			}
-
-			// Also invalid if goes through shape
-			if (isValid && base.contains((p1.getX() + p2.getX()) / 2, (p1.getY() + p2.getY()) / 2)) {
-				isValid = false;
-			}
-
-			if (isValid) {
+			if (isValid(p1, p2, base, geom)) {
 				// Map in connections
 				final double dist = Math.hypot(p1.getX() - p2.getX(), p1.getY() - p2.getY());
 				connections.put(new CurveConnection(t[0], t[1], dist), other);
@@ -97,40 +73,47 @@ public class CurveNode {
 
 	}
 
-	public void addStartingCases(PriorityQueue<RecursionCase> recurseCases, double x, double y, double rad,
+	public void addStartingCases(PriorityQueue<RecursionCase> recurseCases, double x, double y, double rad, Area base,
 			ArrayList<Shape> geom) {
 		double[] times = curve.getTangentTimes(x, y);
 		for (double t : times) {
 			Point2D p = curve.eval(t);
 
-			boolean isValid = true;
-			for (Shape s : geom) {
-				if (s.equals(curve))
-					continue;
-
-				if (s instanceof Line2D) {
-					Line2D l = (Line2D) s;
-					if (Util.linesIntersect(l.getX1(), l.getY1(), l.getX2(), l.getY2(), x, y, p.getX(), p.getY())
-							&& !p.equals(l.getP1()) && !p.equals(l.getP2())) {
-						isValid = false;
-						break;
-					}
-				} else if (s instanceof Curve) {
-					Curve c = (Curve) s;
-					if (c.intersectsLine(x, y, p.getX(), p.getY()) && !p.equals(c.getP1()) && !p.equals(c.getP2())) {
-						isValid = false;
-						break;
-					}
-				}
-			}
-
-			if (isValid) {
+			if (isValid(new Point2D.Double(x, y), p, base, geom)) {
 				// Add new case
 				double dist = rad - Math.hypot(x - p.getX(), y - p.getY());
 				recurseCases.add(new RecursionCase(dist, this, t));
 				addDistance(t, dist, recurseCases);
 			}
 		}
+	}
+
+	private boolean isValid(Point2D p1, Point2D p2, Area base, ArrayList<Shape> geom) {
+		for (Shape s : geom) {
+			if (s.equals(curve))
+				continue;
+
+			if (s instanceof Line2D) {
+				Line2D l = (Line2D) s;
+				if (Util.linesIntersect(l.getX1(), l.getY1(), l.getX2(), l.getY2(), p1.getX(), p1.getY(), p2.getX(),
+						p2.getY()) && !l.getP1().equals(p1) && !l.getP2().equals(p1) && !l.getP1().equals(p2)
+						&& !l.getP2().equals(p2)) {
+					return false;
+				}
+			} else if (s instanceof Curve) {
+				Curve c = (Curve) s;
+				if (c.intersectsLine(p1.getX(), p1.getY(), p2.getX(), p2.getY()) && !c.getP1().equals(p1)
+						&& !c.getP2().equals(p1) && !c.getP1().equals(p2) && !c.getP2().equals(p2)) {
+					return false;
+				}
+			}
+		}
+
+		// Also invalid if goes through shape
+		if (base.contains((p1.getX() + p2.getX()) / 2, (p1.getY() + p2.getY()) / 2)) {
+			return false;
+		}
+		return true;
 	}
 
 	public void addDistance(double t, double dist, PriorityQueue<RecursionCase> recurse) {
@@ -209,21 +192,20 @@ public class CurveNode {
 	public Area getDistShape(Area base) {
 		Area ret = new Area();
 
-		// Explicitly do 0 and 1
-//		distances.put(0.0, getDistance(0.0));
-//		distances.put(1.0, getDistance(1.0));
-		for (Map.Entry<Double, Double> e : distances.entrySet()) {
-			if (e.getValue() > 0)
-				ret.add(subShape(e.getKey(), e.getValue(), base));
-		}
+		if (shouldRaycast) {
+			for (Map.Entry<Double, Double> e : distances.entrySet()) {
+				if (e.getValue() > 0)
+					ret.add(subShape(e.getKey(), e.getValue(), base));
+			}
 
+		}
 		return ret;
 	}
 
 	private Area subShape(double t, double r, Area base) {
 		Area curveShape = curve.getProjection(t, r);
 		Area c2 = new Area(curveShape);
-		
+
 		// Raycast from slightly outside of curve
 		Point2D p = curve.getRaycastPoint(0);
 		Point2D p2 = curve.getRaycastPoint(1);

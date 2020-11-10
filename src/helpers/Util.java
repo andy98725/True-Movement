@@ -199,6 +199,8 @@ public class Util {
 	}
 
 	public static Shape extendArea(Shape a, double dist) {
+		if (dist < 1)
+			return a;
 		Stroke extendStroke = new BasicStroke(-1 + 2 * (float) dist, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND);
 		return extendStroke.createStrokedShape(a);
 	}

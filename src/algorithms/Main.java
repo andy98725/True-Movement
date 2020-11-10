@@ -9,7 +9,7 @@ import java.util.Random;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
-import helpers.GeometryBucket;
+import helpers.PlacementShape;
 import helpers.Util;
 
 @SuppressWarnings("serial")
@@ -99,7 +99,7 @@ public class Main extends JPanel {
 	private static final boolean DISP_SIGHT = true;
 	private static final boolean MOVE_ENABLED = true;
 	private static final boolean DISP_MOVE = true;
-	private static final boolean MOVE_OUTER_ENABLED = false;
+	private static final boolean MOVE_OUTER_ENABLED = true;
 	private static final double MOVE_RAD = 16;
 
 	@Override
@@ -118,7 +118,7 @@ public class Main extends JPanel {
 		g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
 		if (SIGHT_ENABLED) {
 			long before = System.nanoTime();
-			Area sight = new Raycast(mx + 0.5, my + 0.5, blockage, 2*mouseRad).get();
+			Area sight = new Raycast(mx + 0.5, my + 0.5, blockage, 2 * mouseRad).get();
 			if (DISP_SIGHT)
 				System.out.println("Sight in " + (System.nanoTime() - before) / 1e9 + " sec" + "(Obs complexity "
 						+ Util.areaComplexity(blockage) + ", Post complexity " + Util.areaComplexity(sight) + ")");
@@ -131,37 +131,36 @@ public class Main extends JPanel {
 		if (MOVE_ENABLED) {
 			long before = System.nanoTime();
 
-			GeometryBucket b = Movement.getMovement(mx, my, new Area(blockage), mouseRad, MOVE_RAD * 2);
+			Movement b = new Movement(new Area(blockage), mx, my, mouseRad, MOVE_RAD * 2);
+			PlacementShape shape = new PlacementShape(b.getResult(), MOVE_RAD, true);
 
 			if (DISP_MOVE) {
 				System.out.println("Move in " + (System.nanoTime() - before) / 1e9 + " sec");
 				System.out.println("Obs complexity of " + Util.areaComplexity(blockage) + "; Move complexity of "
-						+ Util.areaComplexity(b.getResult()));
+						+ Util.areaComplexity(shape.getInner()));
 			}
 //			b.drawNodes(g);
 
-			Area outer = null;
 			if (MOVE_OUTER_ENABLED) {
 				before = System.nanoTime();
-				outer = new Area(b.getResult());
-				outer.add(new Area(Util.extendArea(outer, MOVE_RAD)));
+				shape.getOuter();
 				if (DISP_MOVE) {
 					System.out.println("Move extended in " + (System.nanoTime() - before) / 1e9 + " sec");
-					System.out.println("Complexity of " + Util.areaComplexity(outer));
+					System.out.println("Complexity of " + Util.areaComplexity(shape.getOuter()));
 				}
 			}
 			if (MOVE_OUTER_ENABLED) {
 				g.setColor(Color.BLUE);
-				g.fill(outer);
+				g.fill(shape.getOuter());
 				g.setColor(Color.CYAN);
-				g.fill(b.getResult());
+				g.fill(shape.getInner());
 				g.setColor(Color.BLUE);
-				g.draw(outer);
+				g.draw(shape.getOuter());
 			} else {
 				g.setColor(Color.CYAN);
-				g.fill(b.getResult());
+				g.fill(shape.getInner());
 				g.setColor(Color.BLUE);
-				g.draw(b.getResult());
+				g.draw(shape.getInner());
 			}
 
 		}
@@ -178,7 +177,7 @@ public class Main extends JPanel {
 //		generateBlocksStatic();
 		generateBlocksRandom();
 
-		blockage.add(new Area(Util.extendArea(blockage, 16)));
+//		blockage.add(new Area(Util.extendArea(blockage, 16)));
 //		blockage = new Area(Util.extendArea(blockage, 16));
 	}
 
