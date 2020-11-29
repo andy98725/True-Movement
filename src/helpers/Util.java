@@ -204,4 +204,48 @@ public class Util {
 		Stroke extendStroke = new BasicStroke(-1 + 2 * (float) dist, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND);
 		return extendStroke.createStrokedShape(a);
 	}
+
+	private static final double SIMPLE_HP_SQ = 1;
+
+	public static Area getSimple(Area base) {
+		Path2D ret = new Path2D.Double();
+
+		double[] coords = new double[6], pcoords = new double[2];
+
+		for (PathIterator i = base.getPathIterator(null); !i.isDone(); i.next()) {
+			switch (i.currentSegment(coords)) {
+			case PathIterator.SEG_CLOSE:
+				ret.closePath();
+				break;
+			case PathIterator.SEG_MOVETO:
+				ret.moveTo(coords[0], coords[1]);
+				System.arraycopy(coords, 0, pcoords, 0, 2);
+				break;
+			case PathIterator.SEG_LINETO:
+				// Ignore small segments
+				if (hypotSq(pcoords[0], pcoords[1], coords[0], coords[1]) < SIMPLE_HP_SQ)
+					continue;
+				ret.lineTo(coords[0], coords[1]);
+				System.arraycopy(coords, 0, pcoords, 0, 2);
+				break;
+			case PathIterator.SEG_QUADTO:
+				if (hypotSq(pcoords[0], pcoords[1], coords[2], coords[3]) < SIMPLE_HP_SQ)
+					continue;
+				ret.quadTo(coords[0], coords[1], coords[2], coords[3]);
+				System.arraycopy(coords, 2, pcoords, 0, 2);
+				break;
+			case PathIterator.SEG_CUBICTO:
+				if (hypotSq(pcoords[0], pcoords[1], coords[4], coords[5]) < SIMPLE_HP_SQ)
+					continue;
+				ret.curveTo(coords[0], coords[1], coords[2], coords[3], coords[4], coords[5]);
+				System.arraycopy(coords, 4, pcoords, 0, 2);
+				break;
+			}
+		}
+		return new Area(ret);
+	}
+
+	private static double hypotSq(double x1, double y1, double x2, double y2) {
+		return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
+	}
 }

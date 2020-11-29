@@ -239,13 +239,15 @@ public class CurveNode {
 
 	private class CurveConnection {
 
+		private static final double MIN_DIST = 0;
+
 		protected final double t0, t1;
 		protected final double dist;
 
 		private CurveConnection(double t0, double t1, double dist) {
 			this.t0 = t0;
 			this.t1 = t1;
-			this.dist = dist;
+			this.dist = Math.max(dist, MIN_DIST);
 		}
 
 	}

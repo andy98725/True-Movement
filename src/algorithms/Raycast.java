@@ -2,14 +2,14 @@ package algorithms;
 
 import java.awt.Shape;
 import java.awt.geom.*;
-import java.util.Stack;
+import java.util.*;
 
 import helpers.Util;
 import helpers.geom.*;
 
 public class Raycast {
 
-	private static final double RAYCAST_DIST = 1E12;
+	private static final double RAYCAST_DIST = 1E8;
 
 //	public static Area raycastIndividuals(Area base, double x, double y, ArrayList<Shape> geom, Shape exclude) {
 //		for (Shape s : geom) {
@@ -299,6 +299,11 @@ public class Raycast {
 	private final Stack<Shape> pathRev = new Stack<Shape>();
 	private int dir;
 
+	private Path2D movePath = null;
+	private ArrayList<Shape> moveShapes = null;
+	private int mdir;
+	private boolean moveActive = false;
+
 	private final double[] coords = new double[6];
 	private final double[] pcoords = new double[2], mcoords = new double[2];
 
@@ -309,7 +314,7 @@ public class Raycast {
 			case PathIterator.SEG_MOVETO:
 				System.arraycopy(coords, 0, mcoords, 0, 2);
 				System.arraycopy(coords, 0, pcoords, 0, 2);
-				move();
+				move(coords[0], coords[1]);
 				break;
 			case PathIterator.SEG_CLOSE:
 				extendLine(pcoords[0], pcoords[1], mcoords[0], mcoords[1]);
@@ -395,7 +400,7 @@ public class Raycast {
 //		System.out.println("Line (" + x1 + ", " + y1 + " - " + x2 + ", " + y2 + ")  with dir "
 //				+ Util.orientation(x, y, x1, y1, x2, y2));
 
-		if (path != null && !inBounds) {
+		if (isActive() && !inBounds) {
 			finishPath(ret, path, x, y, pathRev);
 			path = null;
 		}
@@ -403,7 +408,7 @@ public class Raycast {
 		if (inBounds) {
 			int lDir = Util.orientation(x, y, x1, y1, x2, y2);
 
-			if (path == null) {
+			if (!isActive()) {
 				dir = lDir;
 				path = new Path2D.Double();
 				path.moveTo(x1, y1);
@@ -417,16 +422,20 @@ public class Raycast {
 				path.moveTo(x1, y1);
 			}
 
+			if (moveActive) {
+				mdir = dir;
+			}
+
 			// Do a line
-			path.lineTo(x2, y2);
-			pathRev.push(new Line2D.Double(x2, y2, x1, y1));
+			path().lineTo(x2, y2);
+			container().add(new Line2D.Double(x2, y2, x1, y1));
 		}
 	}
 
 	private void extendQuad(double x1, double y1, double ctrlx, double ctrly, double x2, double y2) {
 		boolean inBounds = intersectsQuad(visionBounds, x1, y1, ctrlx, ctrly, x2, y2);
 
-		if (path != null && !inBounds) {
+		if (isActive() && !inBounds) {
 			finishPath(ret, path, x, y, pathRev);
 			path = null;
 
@@ -438,7 +447,7 @@ public class Raycast {
 			if (new QuadCurve2D.Double(x1, y1, ctrlx, ctrly, x2, y2).contains(x, y))
 				qDir *= -1;
 
-			if (path == null) {
+			if (!isActive()) {
 				dir = qDir;
 				path = new Path2D.Double();
 				path.moveTo(x1, y1);
@@ -452,9 +461,13 @@ public class Raycast {
 				path.moveTo(x1, y1);
 			}
 
+			if (moveActive) {
+				mdir = dir;
+			}
+
 			// Do a quad
-			path.quadTo(ctrlx, ctrly, x2, y2);
-			pathRev.push(new QuadCurve2D.Double(x2, y2, ctrlx, ctrly, x1, y1));
+			path().quadTo(ctrlx, ctrly, x2, y2);
+			container().add(new QuadCurve2D.Double(x2, y2, ctrlx, ctrly, x1, y1));
 		}
 	}
 
@@ -463,7 +476,7 @@ public class Raycast {
 //		System.out.println("Cubic with dir " + Util.orientation(x, y, x1, y1, x2, y2));
 		boolean inBounds = intersectsCubic(visionBounds, x1, y1, ctrlx1, ctrly1, ctrlx2, ctrly2, x2, y2);
 
-		if (path != null && !inBounds) {
+		if (isActive() && !inBounds) {
 			finishPath(ret, path, x, y, pathRev);
 			path = null;
 
@@ -475,7 +488,7 @@ public class Raycast {
 			if (new CubicCurve2D.Double(x1, y1, ctrlx1, ctrly1, ctrlx2, ctrly2, x2, y2).contains(x, y))
 				qDir *= -1;
 
-			if (path == null) {
+			if (!isActive()) {
 				dir = qDir;
 				path = new Path2D.Double();
 				path.moveTo(x1, y1);
@@ -489,22 +502,63 @@ public class Raycast {
 				path.moveTo(x1, y1);
 			}
 
+			if (moveActive) {
+				mdir = dir;
+			}
+
 			// Do a cubic
-			path.curveTo(ctrlx1, ctrly1, ctrlx2, ctrly2, x2, y2);
-			pathRev.push(new CubicCurve2D.Double(x2, y2, ctrlx2, ctrly2, ctrlx1, ctrly1, x1, y1));
+			path().curveTo(ctrlx1, ctrly1, ctrlx2, ctrly2, x2, y2);
+			container().add(new CubicCurve2D.Double(x2, y2, ctrlx2, ctrly2, ctrlx1, ctrly1, x1, y1));
 		}
 	}
 
-	private void move() {
+	private boolean isActive() {
+		return path != null || moveActive;
+	}
+
+	private Path2D path() {
+		if (moveActive)
+			return movePath;
+		return path;
+	}
+
+	private List<Shape> container() {
+		if (moveActive)
+			return moveShapes;
+		return pathRev;
+	}
+
+	private void move(double x, double y) {
+		moveActive = true;
+		movePath = new Path2D.Double();
+		movePath.moveTo(x, y);
+		moveShapes = new ArrayList<Shape>();
 		// Unused for now
 	}
 
 	private void close() {
+		if (mdir != dir) {
+			finishPath(ret, path, x, y, pathRev);
+			path = null;
+		}
+
+		// Append initial move path
+		if (path == null) {
+			path = new Path2D.Double();
+		}
+		path.append(movePath, true);
+		pathRev.addAll(moveShapes);
+		moveActive = false;
+
 		finishPath(ret, path, x, y, pathRev);
 		path = null;
 	}
 
-	private static void finishPath(Area ret, Path2D path, double x, double y, Stack<Shape> pathRev) {
+	private void finishPath(Area ret, Path2D path, double x, double y, Stack<Shape> pathRev) {
+		if (moveActive == true) {
+			moveActive = false;
+			return;
+		}
 		if (pathRev.size() == 0)
 			return;
 
@@ -587,8 +641,22 @@ public class Raycast {
 		path.lineTo(fx, fy);
 		path.closePath();
 
+		if (ON_MOVE) {
+			if (count == 1) {
+				if (temp == 2) {
+					System.out.println(Util.areaComplexity(ret));
+					System.out.println(Util.areaComplexity(path));
+				}
+				temp++;
+			}
+			count++;
+		}
 		ret.subtract(new Area(path));
 	}
+
+	private int count = 0;
+	public static boolean ON_MOVE = false;
+	private static int temp = 0;
 
 	private static boolean intersectsLine(Rectangle2D visionBounds, double x1, double y1, double x2, double y2) {
 		return visionBounds.intersectsLine(x1, y1, x2, y2);

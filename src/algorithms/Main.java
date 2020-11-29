@@ -16,6 +16,13 @@ import helpers.Util;
 public class Main extends JPanel {
 	private static final int SIZE = 768;
 
+	private static final boolean SIGHT_ENABLED = true;
+	private static final boolean DISP_SIGHT = true;
+	private static final boolean MOVE_ENABLED = true;
+	private static final boolean DISP_MOVE = true;
+	private static final boolean MOVE_OUTER_ENABLED = true;
+	private static final double MOVE_RAD = 16;
+
 	public static void main(String[] args) {
 		JFrame app = new JFrame();
 		app.setTitle("My app");
@@ -95,12 +102,6 @@ public class Main extends JPanel {
 		repaint();
 	}
 
-	private static final boolean SIGHT_ENABLED = true;
-	private static final boolean DISP_SIGHT = true;
-	private static final boolean MOVE_ENABLED = true;
-	private static final boolean DISP_MOVE = true;
-	private static final boolean MOVE_OUTER_ENABLED = true;
-	private static final double MOVE_RAD = 16;
 
 	@Override
 	public void paint(Graphics graphics) {
@@ -130,7 +131,7 @@ public class Main extends JPanel {
 		}
 		if (MOVE_ENABLED) {
 			long before = System.nanoTime();
-
+			Raycast.ON_MOVE = true; //TODO delete this
 			Movement b = new Movement(new Area(blockage), mx, my, mouseRad, MOVE_RAD * 2);
 			PlacementShape shape = new PlacementShape(b.getResult(), MOVE_RAD, true);
 
@@ -183,7 +184,7 @@ public class Main extends JPanel {
 
 	@SuppressWarnings("unused")
 	private void generateBlocksRandom() {
-		Random r = new Random();
+		Random r = new Random(5);
 
 		blockage = new Area();
 
@@ -217,8 +218,8 @@ public class Main extends JPanel {
 		blockage = new Area();
 		int x = SIZE / 2, y = SIZE / 2;
 		int w = SIZE / 2, h = SIZE / 2;
-//		blockage.add(new Area(new Rectangle(x - w / 2, y - h / 2, w, h)));
-		blockage.add(new Area(new Ellipse2D.Double(x - w / 2, y - h / 2, w, h)));
+		blockage.add(new Area(new Rectangle(x - w / 2, y - h / 2, w, h)));
+//		blockage.add(new Area(new Ellipse2D.Double(x - w / 2, y - h / 2, w, h)));
 
 		x *= 1.5;
 		y *= 1.5;

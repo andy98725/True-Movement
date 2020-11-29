@@ -217,6 +217,7 @@ public class Movement {
 			res.add(n.getDistShape(base));
 		}
 		res.subtract(base);
+		res = Util.getSimple(res);
 
 		return res;
 	}
