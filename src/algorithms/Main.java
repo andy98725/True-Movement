@@ -131,7 +131,6 @@ public class Main extends JPanel {
 		}
 		if (MOVE_ENABLED) {
 			long before = System.nanoTime();
-			Raycast.ON_MOVE = true; //TODO delete this
 			Movement b = new Movement(new Area(blockage), mx, my, mouseRad, MOVE_RAD * 2);
 			PlacementShape shape = new PlacementShape(b.getResult(), MOVE_RAD, true);
 

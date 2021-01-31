@@ -189,12 +189,15 @@ public class CurveNode {
 		return maxDist;
 	}
 
+	// To reduce on lag, smaller shapes are ignored lol
+	private static final double MIN_SIZE = 1;
+
 	public Area getDistShape(Area base) {
 		Area ret = new Area();
 
 		if (shouldRaycast) {
 			for (Map.Entry<Double, Double> e : distances.entrySet()) {
-				if (e.getValue() > 0)
+				if (e.getValue() > MIN_SIZE)
 					ret.add(subShape(e.getKey(), e.getValue(), base));
 			}
 
@@ -204,6 +207,7 @@ public class CurveNode {
 
 	private Area subShape(double t, double r, Area base) {
 		Area curveShape = curve.getProjection(t, r);
+		curveShape.subtract(new Area(curve));
 		Area c2 = new Area(curveShape);
 
 		// Raycast from slightly outside of curve
@@ -214,7 +218,6 @@ public class CurveNode {
 		c2 = new Raycast(c2, p2.getX(), p2.getY(), base, curve).get();
 
 		curveShape.add(c2);
-		curveShape.subtract(new Area(curve));
 
 		return curveShape;
 

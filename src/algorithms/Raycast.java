@@ -270,8 +270,7 @@ public class Raycast {
 					} else {
 						fixed.quadTo(coords[0], coords[1], coords[2], coords[3]);
 					}
-				} else
-					System.out.println("B");
+				}
 				break;
 			case PathIterator.SEG_CUBICTO:
 				if (visionBounds.contains(coords[4], coords[5])) {
@@ -601,7 +600,15 @@ public class Raycast {
 		double fx = x + Math.cos(a2) * RAYCAST_DIST;
 		double fy = y + Math.sin(a2) * RAYCAST_DIST;
 
+		a1 -= Math.PI / 2;
+		a2 += Math.PI / 2;
+		double iix = ix + Math.cos(a1);
+		double iiy = iy + Math.sin(a1);
+		double ffx = fx + Math.cos(a2);
+		double ffy = fy + Math.sin(a2);
+
 		// Initial line outwards
+		path.lineTo(iix, iiy);
 		path.lineTo(ix, iy);
 
 		// Follow path in reverse
@@ -639,24 +646,11 @@ public class Raycast {
 		}
 		// Ending line
 		path.lineTo(fx, fy);
+		path.lineTo(ffx, ffy);
 		path.closePath();
 
-		if (ON_MOVE) {
-			if (count == 1) {
-				if (temp == 2) {
-					System.out.println(Util.areaComplexity(ret));
-					System.out.println(Util.areaComplexity(path));
-				}
-				temp++;
-			}
-			count++;
-		}
 		ret.subtract(new Area(path));
 	}
-
-	private int count = 0;
-	public static boolean ON_MOVE = false;
-	private static int temp = 0;
 
 	private static boolean intersectsLine(Rectangle2D visionBounds, double x1, double y1, double x2, double y2) {
 		return visionBounds.intersectsLine(x1, y1, x2, y2);

@@ -18,6 +18,7 @@ public class Movement {
 	private final ArrayList<CurveNode> nodes = new ArrayList<CurveNode>();
 
 	private final double originX, originY, rad;
+	private final double thickness;
 
 	private final Area result;
 
@@ -30,22 +31,23 @@ public class Movement {
 		this.originX = x;
 		this.originY = y;
 		this.rad = maxRad - minWidth;
+		this.thickness = minWidth;
 		// Since the area is necessarily extended, we can make the nice assumption
 		// that the only POI are curved nodes.
 		// This allows a complete exclusion of a pointNode class.
-		base = new Area(a);
-		double ir = maxRad + minWidth;
-		base.intersect(new Area(new Ellipse2D.Double(x - ir, y - ir, 2 * ir, 2 * ir)));
-		base.add(new Area(Util.extendArea(base, minWidth)));
-		if (base.contains(x, y)) {
+
+		// Before calling extend, limit to bounds
+		Area block = new Area(a);
+		double ir = maxRad + thickness * 2;
+		block.intersect(new Area(new Ellipse2D.Double(x - ir, y - ir, 2 * ir, 2 * ir)));
+		block.add(new Area(Util.extendArea(block, thickness)));
+		block = Util.getSimple(block);
+		this.base = block;
+
+		if (block.contains(x, y)) {
 			result = new Area();
 			return;
 		}
-
-		// Limit?
-//		double erad = maxRad + 1;
-//		base.intersect(new Area(new Ellipse2D.Double(x - erad, y - erad, 2 * erad, 2 * erad)));
-//		baseExtended.intersect(new Area(new Ellipse2D.Double(x - erad, y - erad, 2 * erad, 2 * erad)));
 
 		generateGeometry();
 
@@ -211,15 +213,14 @@ public class Movement {
 	}
 
 	private Area getRaycast() {
-//		Area res = new Area();
 		Area res = new Raycast(originX, originY, base, rad).get();
-		for (CurveNode n : nodes) {
-			res.add(n.getDistShape(base));
-		}
-		res.subtract(base);
-		res = Util.getSimple(res);
 
-		return res;
+		for (CurveNode n : nodes)
+			res.add(n.getDistShape(base));
+
+		res.subtract(base);
+
+		return Util.getSimple(res);
 	}
 
 	public Area getResult() {

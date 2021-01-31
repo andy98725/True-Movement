@@ -607,4 +607,10 @@ public class Cubic extends CubicCurve2D.Double implements Curve {
 				&& ctrly2 == q.ctrly2 && x2 == q.x2 && y2 == q.y2;
 	}
 
+	@Override
+	public String toString() {
+		return "{Cubic (" + x1 + ", " + y1 + ") -> (" + x2 + ", " + y2 + ") controls (" + ctrlx1 + ", " + ctrly1
+				+ "), (" + ctrlx2 + ", " + ctrly2 + ")}";
+	}
+
 }

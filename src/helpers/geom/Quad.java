@@ -437,4 +437,8 @@ public class Quad extends QuadCurve2D.Double implements Curve {
 		return x1 == q.x1 && y1 == q.y1 && ctrlx == q.ctrlx && ctrly == q.ctrly && x2 == q.x2 && y2 == q.y2;
 	}
 
+	@Override
+	public String toString() {
+		return "{Quad (" + x1 + ", " + y1 + ") -> (" + x2 + ", " + y2 + ") control (" + ctrlx + ", " + ctrly + ")}";
+	}
 }
