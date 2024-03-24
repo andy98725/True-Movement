@@ -4,6 +4,11 @@ This is a demo app centered around raycasting for sight and true movement.
 
 "True Movement" is a rather intuitive concept; given a point and a distance, find the space reachable in a geometry from that point.
 
+![1](./imgs/1.png)
+![2](./imgs/2.png)
+![3](./imgs/3.png)
+![4](./imgs/4.png)
+
 ## Significance
 
 This differs from traditional algorithms in a few minor (but important) ways.
